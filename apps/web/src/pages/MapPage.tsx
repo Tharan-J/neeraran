@@ -5,12 +5,23 @@ import { useStore } from '../store/useStore';
 import { apiFetch } from '../api';
 
 export const MapPage: React.FC = () => {
-  const { simState, selectedCaseId, setSelectedCaseId } = useStore();
+  const { role, simState, selectedCaseId, setSelectedCaseId } = useStore();
   const [selectedAsset, setSelectedAsset] = useState<any | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'now' | 'why' | 'plan' | 'history'>('why');
-  const [layers, setLayers] = useState({ blocks: true, pipes: true, tanks: true, complaints: true });
+  const [layers, setLayers] = useState({
+    blocks: true,
+    pipes: role !== 'student',
+    tanks: true,
+    complaints: true
+  });
   const [incidents, setIncidents] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (role === 'student') {
+      setLayers(prev => ({ ...prev, pipes: false }));
+    }
+  }, [role]);
 
   useEffect(() => {
     apiFetch<any[]>('/v1/incidents').then((data) => {
@@ -58,10 +69,12 @@ export const MapPage: React.FC = () => {
             <input type="checkbox" checked={layers.blocks} onChange={(e) => setLayers({ ...layers, blocks: e.target.checked })} className="rounded text-sky-500" />
             <span>Blocks</span>
           </label>
-          <label className="flex items-center gap-1.5 cursor-pointer">
-            <input type="checkbox" checked={layers.pipes} onChange={(e) => setLayers({ ...layers, pipes: e.target.checked })} className="rounded text-sky-500" />
-            <span>Pipes</span>
-          </label>
+          {role !== 'student' && (
+            <label className="flex items-center gap-1.5 cursor-pointer">
+              <input type="checkbox" checked={layers.pipes} onChange={(e) => setLayers({ ...layers, pipes: e.target.checked })} className="rounded text-sky-500" />
+              <span>Pipes</span>
+            </label>
+          )}
           <label className="flex items-center gap-1.5 cursor-pointer">
             <input type="checkbox" checked={layers.tanks} onChange={(e) => setLayers({ ...layers, tanks: e.target.checked })} className="rounded text-sky-500" />
             <span>Tanks</span>
@@ -234,112 +247,153 @@ export const MapPage: React.FC = () => {
               </button>
             </div>
 
-            {/* 4 Tab Switcher: Now, Why, Plan, History */}
-            <div className="grid grid-cols-4 gap-1 p-1 bg-sky-50 dark:bg-white/5 rounded-xl text-xs font-semibold">
-              {(['now', 'why', 'plan', 'history'] as const).map((tab) => (
-                <button
-                  key={tab}
-                  onClick={() => setActiveTab(tab)}
-                  className={`py-1.5 rounded-lg capitalize transition-colors ${
-                    activeTab === tab
-                      ? 'bg-white dark:bg-sky-500 text-sky-700 dark:text-white shadow-sm'
-                      : 'text-ink-600 dark:text-sky-300 hover:text-ink-900'
-                  }`}
-                >
-                  {tab}
-                </button>
-              ))}
-            </div>
-
-            {/* Tab 1: Now (Live readings) */}
-            {activeTab === 'now' && (
-              <div className="space-y-4 flex-1 overflow-y-auto pr-1">
+            {/* Role-Specific Content */}
+            {role === 'student' ? (
+              <div className="space-y-4 flex-1 overflow-y-auto pr-1 text-xs">
+                <div className="p-4 bg-sky-50 dark:bg-white/5 rounded-2xl border border-sky-100 dark:border-white/10 space-y-2">
+                  <span className="font-bold text-ink-900 dark:text-mist text-sm">{selectedAsset?.name || 'Hostel Block A'}</span>
+                  <p className="text-ink-600 dark:text-sky-300">
+                    Water supply status is actively supervised by the NEERARAN SCADA network.
+                  </p>
+                </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="p-3 bg-sky-50/60 dark:bg-white/5 rounded-xl">
-                    <span className="text-[11px] text-ink-600 dark:text-sky-300 block">Meter Flow</span>
-                    <span className="text-lg font-bold font-mono text-coral">58.4 L/min</span>
-                    <span className="text-[10px] text-coral block mt-0.5">+380% above night baseline</span>
+                    <span className="text-[11px] text-ink-500 dark:text-sky-400 block">Supply State</span>
+                    <span className="text-sm font-bold text-leaf font-mono">Normal Supply</span>
                   </div>
                   <div className="p-3 bg-sky-50/60 dark:bg-white/5 rounded-xl">
-                    <span className="text-[11px] text-ink-600 dark:text-sky-300 block">Sub-header Pressure</span>
-                    <span className="text-lg font-bold font-mono text-amber">2.30 bar</span>
-                    <span className="text-[10px] text-amber block mt-0.5">Nominal 2.85 bar</span>
+                    <span className="text-[11px] text-ink-500 dark:text-sky-400 block">Reserve Autonomy</span>
+                    <span className="text-sm font-bold text-ink-900 dark:text-mist font-mono">18.5 hours</span>
                   </div>
                 </div>
-                <div className="p-3 bg-sky-50/60 dark:bg-white/5 rounded-xl space-y-1 text-xs">
-                  <span className="font-semibold text-ink-900 dark:text-mist block">Data Quality Note:</span>
-                  <p className="text-ink-600 dark:text-sky-300">
-                    Transducer calibration valid. No flat-line or dropout detected. Signal corroborated by acoustic sensor on PIPE-OHT1-HSTLA.
+                <div className="p-3 bg-emerald-50/60 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-800/30 rounded-xl space-y-1">
+                  <span className="font-bold text-emerald-800 dark:text-emerald-300">Water Quality: Safe</span>
+                  <p className="text-ink-600 dark:text-sky-300 text-[11px]">
+                    Chlorine and turbidity transducers within Indian Standard IS 10500 potable limits.
                   </p>
                 </div>
+                <a
+                  href="/app/overview"
+                  className="w-full py-2.5 rounded-btn bg-sky-500 text-white font-medium text-xs flex items-center justify-center gap-1.5 hover:bg-sky-600 transition-colors"
+                >
+                  <Droplet className="w-3.5 h-3.5" />
+                  <span>Report Water Issue in this Block</span>
+                </a>
               </div>
+            ) : (
+              <>
+                {/* 4 Tab Switcher: Now, Why, Plan, History */}
+                <div className="grid grid-cols-4 gap-1 p-1 bg-sky-50 dark:bg-white/5 rounded-xl text-xs font-semibold">
+                  {(['now', 'why', 'plan', 'history'] as const).map((tab) => (
+                    <button
+                      key={tab}
+                      onClick={() => setActiveTab(tab)}
+                      className={`py-1.5 rounded-lg capitalize transition-colors ${
+                        activeTab === tab
+                          ? 'bg-white dark:bg-sky-500 text-sky-700 dark:text-white shadow-sm'
+                          : 'text-ink-600 dark:text-sky-300 hover:text-ink-900'
+                      }`}
+                    >
+                      {tab}
+                    </button>
+                  ))}
+                </div>
+              </>
             )}
 
-            {/* Tab 2: Why (Plain-language reasoning with evidence chips) */}
-            {activeTab === 'why' && (
-              <div className="space-y-4 flex-1 overflow-y-auto pr-1">
-                <div className="p-4 bg-sky-50/70 dark:bg-white/5 rounded-2xl border border-sky-100 dark:border-white/10 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-sky-700 dark:text-sky-300">Operational Reasoning</span>
-                    <span className="px-2 py-0.5 rounded-pill bg-leaf/15 text-leaf text-[10px] font-bold">
-                      Verifier Score: 1.0 (Grounded)
-                    </span>
-                  </div>
-                  <p className="text-xs text-ink-900 dark:text-mist leading-relaxed font-sans">
-                    {activeCase.why}
-                  </p>
-                </div>
-
-                <div className="space-y-2">
-                  <span className="text-xs font-semibold text-ink-900 dark:text-mist block">Supporting Evidence Chips:</span>
-                  <div className="space-y-2">
-                    {activeCase.evidence?.map((e: any) => (
-                      <div key={e.id} className="p-3 bg-white dark:bg-white/5 border border-sky-100 dark:border-white/10 rounded-xl text-xs space-y-1">
-                        <div className="flex items-center justify-between">
-                          <span className="font-mono font-bold text-sky-700 dark:text-sky-300">[{e.id}] {e.kind}</span>
-                          <span className="font-mono text-ink-900 dark:text-mist font-semibold">{e.value} {e.unit} (baseline {e.baseline})</span>
-                        </div>
-                        <p className="text-[11px] text-ink-600 dark:text-sky-300">{e.note}</p>
+            {role !== 'student' && (
+              <>
+                {/* Tab 1: Now (Live readings) */}
+                {activeTab === 'now' && (
+                  <div className="space-y-4 flex-1 overflow-y-auto pr-1">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="p-3 bg-sky-50/60 dark:bg-white/5 rounded-xl">
+                        <span className="text-[11px] text-ink-600 dark:text-sky-300 block">Meter Flow</span>
+                        <span className="text-lg font-bold font-mono text-coral">58.4 L/min</span>
+                        <span className="text-[10px] text-coral block mt-0.5">+380% above night baseline</span>
                       </div>
-                    ))}
+                      <div className="p-3 bg-sky-50/60 dark:bg-white/5 rounded-xl">
+                        <span className="text-[11px] text-ink-600 dark:text-sky-300 block">Sub-header Pressure</span>
+                        <span className="text-lg font-bold font-mono text-amber">2.30 bar</span>
+                        <span className="text-[10px] text-amber block mt-0.5">Nominal 2.85 bar</span>
+                      </div>
+                    </div>
+                    <div className="p-3 bg-sky-50/60 dark:bg-white/5 rounded-xl space-y-1 text-xs">
+                      <span className="font-semibold text-ink-900 dark:text-mist block">Data Quality Note:</span>
+                      <p className="text-ink-600 dark:text-sky-300">
+                        Transducer calibration valid. No flat-line or dropout detected. Signal corroborated by acoustic sensor on PIPE-OHT1-HSTLA.
+                      </p>
+                    </div>
                   </div>
-                </div>
-              </div>
-            )}
+                )}
 
-            {/* Tab 3: Plan */}
-            {activeTab === 'plan' && (
-              <div className="space-y-4 flex-1 overflow-y-auto pr-1">
-                <div className="space-y-2.5">
-                  <span className="text-xs font-semibold text-ink-900 dark:text-mist block">Optimizer Recommended Steps:</span>
-                  <div className="p-3 bg-white dark:bg-white/5 border border-sky-100 dark:border-white/10 rounded-xl space-y-1 text-xs">
-                    <span className="font-bold text-ink-900 dark:text-mist">Step 1: Create CMMS Work Order</span>
-                    <p className="text-ink-600 dark:text-sky-300">Dispatched to K. Priya (Leak Specialist) with pipe clamp kit.</p>
-                  </div>
-                  <div className="p-3 bg-amber/10 border border-amber/30 rounded-xl space-y-1 text-xs">
-                    <span className="font-bold text-amber">Step 2: Throttle Valve VALVE-FEED-HSTLA to 40%</span>
-                    <p className="text-ink-600 dark:text-sky-300">Requires Admin approval. Suppresses loss by 45 L/min.</p>
-                  </div>
-                  <div className="p-3 bg-white dark:bg-white/5 border border-sky-100 dark:border-white/10 rounded-xl space-y-1 text-xs">
-                    <span className="font-bold text-ink-900 dark:text-mist">Step 3: Rollback Procedure</span>
-                    <p className="text-ink-600 dark:text-sky-300">In case of pressure drop below 1.8 bar, valve returns to 100% open.</p>
-                  </div>
-                </div>
-              </div>
-            )}
+                {/* Tab 2: Why (Plain-language reasoning with evidence chips) */}
+                {activeTab === 'why' && (
+                  <div className="space-y-4 flex-1 overflow-y-auto pr-1">
+                    <div className="p-4 bg-sky-50/70 dark:bg-white/5 rounded-2xl border border-sky-100 dark:border-white/10 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-sky-700 dark:text-sky-300">Operational Reasoning</span>
+                        <span className="px-2 py-0.5 rounded-pill bg-leaf/15 text-leaf text-[10px] font-bold">
+                          Verifier Score: 1.0 (Grounded)
+                        </span>
+                      </div>
+                      <p className="text-xs text-ink-900 dark:text-mist leading-relaxed font-sans">
+                        {activeCase.why}
+                      </p>
+                    </div>
 
-            {/* Tab 4: History */}
-            {activeTab === 'history' && (
-              <div className="space-y-3 flex-1 overflow-y-auto pr-1 text-xs">
-                <div className="p-3 bg-sky-50 dark:bg-white/5 rounded-xl space-y-1">
-                  <span className="font-mono text-ink-600 dark:text-sky-300">14 days ago • HIST-01</span>
-                  <p className="font-medium text-ink-900 dark:text-mist">Hostel B 3rd floor riser repaired by clamp. Cost: ₹4,500.</p>
-                </div>
-                <div className="p-3 bg-sky-50 dark:bg-white/5 rounded-xl space-y-1">
-                  <span className="font-mono text-ink-600 dark:text-sky-300">28 days ago • HIST-02</span>
-                  <p className="font-medium text-ink-900 dark:text-mist">Transfer pipe joint gasket replaced. Cost: ₹12,800.</p>
-                </div>
-              </div>
+                    <div className="space-y-2">
+                      <span className="text-xs font-semibold text-ink-900 dark:text-mist block">Supporting Evidence Chips:</span>
+                      <div className="space-y-2">
+                        {activeCase.evidence?.map((e: any) => (
+                          <div key={e.id} className="p-3 bg-white dark:bg-white/5 border border-sky-100 dark:border-white/10 rounded-xl text-xs space-y-1">
+                            <div className="flex items-center justify-between">
+                              <span className="font-mono font-bold text-sky-700 dark:text-sky-300">[{e.id}] {e.kind}</span>
+                              <span className="font-mono text-ink-900 dark:text-mist font-semibold">{e.value} {e.unit} (baseline {e.baseline})</span>
+                            </div>
+                            <p className="text-[11px] text-ink-600 dark:text-sky-300">{e.note}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Tab 3: Plan */}
+                {activeTab === 'plan' && (
+                  <div className="space-y-4 flex-1 overflow-y-auto pr-1">
+                    <div className="space-y-2.5">
+                      <span className="text-xs font-semibold text-ink-900 dark:text-mist block">Optimizer Recommended Steps:</span>
+                      <div className="p-3 bg-white dark:bg-white/5 border border-sky-100 dark:border-white/10 rounded-xl space-y-1 text-xs">
+                        <span className="font-bold text-ink-900 dark:text-mist">Step 1: Create CMMS Work Order</span>
+                        <p className="text-ink-600 dark:text-sky-300">Dispatched to K. Priya (Leak Specialist) with pipe clamp kit.</p>
+                      </div>
+                      <div className="p-3 bg-amber/10 border border-amber/30 rounded-xl space-y-1 text-xs">
+                        <span className="font-bold text-amber">Step 2: Throttle Valve VALVE-FEED-HSTLA to 40%</span>
+                        <p className="text-ink-600 dark:text-sky-300">Requires Admin approval. Suppresses loss by 45 L/min.</p>
+                      </div>
+                      <div className="p-3 bg-white dark:bg-white/5 border border-sky-100 dark:border-white/10 rounded-xl space-y-1 text-xs">
+                        <span className="font-bold text-ink-900 dark:text-mist">Step 3: Rollback Procedure</span>
+                        <p className="text-ink-600 dark:text-sky-300">In case of pressure drop below 1.8 bar, valve returns to 100% open.</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Tab 4: History */}
+                {activeTab === 'history' && (
+                  <div className="space-y-3 flex-1 overflow-y-auto pr-1 text-xs">
+                    <div className="p-3 bg-sky-50 dark:bg-white/5 rounded-xl space-y-1">
+                      <span className="font-mono text-ink-600 dark:text-sky-300">14 days ago • HIST-01</span>
+                      <p className="font-medium text-ink-900 dark:text-mist">Hostel B 3rd floor riser repaired by clamp. Cost: ₹4,500.</p>
+                    </div>
+                    <div className="p-3 bg-sky-50 dark:bg-white/5 rounded-xl space-y-1">
+                      <span className="font-mono text-ink-600 dark:text-sky-300">28 days ago • HIST-02</span>
+                      <p className="font-medium text-ink-900 dark:text-mist">Transfer pipe joint gasket replaced. Cost: ₹12,800.</p>
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </motion.div>
         )}

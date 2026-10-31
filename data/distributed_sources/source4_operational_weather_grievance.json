@@ -1,0 +1,39 @@
+{
+  "source_id": "source_4",
+  "source_name": "Operational Weather Radar & Citizen Compliance Portal",
+  "subsystem_type": "weather_grievance",
+  "timestamp": "2026-10-31T07:18:29.158742+00:00",
+  "description": "Environmental microclimate sensors and CPGRAMS-aligned public grievances portal",
+  "weather": {
+    "temperature_c": 28.5,
+    "temp_lag_1h": 27.8,
+    "rainfall_mm_hr": 0.0,
+    "rain_rolling_sum_24h": 0.0,
+    "humidity_pct": 64.0,
+    "heatwave_alert": false
+  },
+  "public_grievances": [
+    {
+      "Grievance_Registration_Number": "CPGRAMS/2026/NEER-00042",
+      "Registration_Date": "2026-10-31",
+      "Category": "Water leakage",
+      "Sub_Category_Description": "Continuous water seepage and low tap pressure observed on 2nd floor bathrooms at Hostel Block A.",
+      "Affected_Building": "BLK-HSTL-A",
+      "Complainant_Type": "Student Resident",
+      "Priority": "High",
+      "Current_Status": "Under Investigation",
+      "Action_Taken_Remarks": "Assigned to acoustic leak detection crew."
+    },
+    {
+      "Grievance_Registration_Number": "CPGRAMS/2026/NEER-00043",
+      "Registration_Date": "2026-10-31",
+      "Category": "Damaged water infrastructure",
+      "Sub_Category_Description": "Wash basin tap handle loose in Central Mess hand-wash area.",
+      "Affected_Building": "BLK-MESS",
+      "Complainant_Type": "Staff Member",
+      "Priority": "Medium",
+      "Current_Status": "Pending Work Order",
+      "Action_Taken_Remarks": "Queued in regular building plumbing maintenance."
+    }
+  ]
+}

@@ -13,7 +13,9 @@ from sqlalchemy.orm import Session
 from apps.api.db.database import (
     engine, init_db, Organization, Deployment, Asset, DataSource,
     Engineer, TelemetryEvent, LatestAssetState, Incident, IncidentEvidence,
-    AuditLog, EvaluationRecord, GroundTruth
+    AuditLog, EvaluationRecord, GroundTruth,
+    Role, User, UserBuildingAssignment, Permission, Complaint, ComplaintStatusHistory,
+    ModelPricingConfig, AgentTokenUsage, GeminiRequest
 )
 
 def hash_key(key: str) -> str:
@@ -232,18 +234,108 @@ def seed_database(db: Session, force: bool = False):
         )
         db.merge(inc)
 
-    # 6. Audit log initialization
-    audit = AuditLog(
-        id=f"AUDIT-{uuid.uuid4().hex[:8]}",
-        timestamp=datetime.utcnow(),
-        actor="system",
-        role="system",
-        action="database_initialized",
-        resource_id="campus_twin",
-        details_json=json.dumps({"message": "NEERARAN campus twin system initialized with 20 blocks, 5 storage units, 3 supply assets."})
-    )
-    db.merge(audit)
+    # 7. Pre-seed Operational Roles
+    roles_data = [
+        ("admin", "Estate Admin", "Full authorized control across all campus infrastructure, models, approvals, and simulation."),
+        ("student", "Student Resident", "Campus water-awareness, own-building consumption, conservation tips, and personal complaints."),
+        ("building_admin", "Building Administrator", "Assigned building consumption, building alerts, forward complaints, request maintenance."),
+        ("engineer", "Maintenance Engineer", "Assigned work orders, repair logs, findings submission, and material requests.")
+    ]
+    for rid, rname, rdesc in roles_data:
+        db.merge(Role(id=rid, name=rname, description=rdesc))
 
+    # 8. Pre-seed Standard Users for all 4 roles
+    users_data = [
+        ("USER-ADMIN-01", "admin@neeraran.edu", "Dr. K. Swaminathan", "admin", None, None),
+        ("USER-STUDENT-01", "student@neeraran.edu", "Ananya Ramesh", "student", "BLK-HSTL-A", None),
+        ("USER-BLDADM-01", "bld_admin@neeraran.edu", "Prof. M. Soundararajan", "building_admin", "BLK-HSTL-A", None),
+        ("USER-ENG-01", "engineer@neeraran.edu", "K. Priya", "engineer", "BLK-HSTL-A", "ENG-02")
+    ]
+    for uid, uemail, ufname, urole, ubld, ueng in users_data:
+        db.merge(User(
+            id=uid,
+            email=uemail,
+            full_name=ufname,
+            role=urole,
+            assigned_building_id=ubld,
+            assigned_engineer_id=ueng,
+            is_active=True
+        ))
+        if ubld:
+            db.merge(UserBuildingAssignment(
+                id=f"UBA-{uid}",
+                user_id=uid,
+                building_id=ubld,
+                role=urole
+            ))
+
+    # 9. Model Pricing Configuration (Official Gemini 3.5 Flash-Lite Paid Tier)
+    db.merge(ModelPricingConfig(
+        id="CFG-GEMINI-35-LITE",
+        model_name="gemini-3.5-flash-lite",
+        input_price_per_million=0.30,
+        output_price_per_million=2.50,
+        pricing_tier="standard_paid",
+        version="2026-v1",
+        is_active=True
+    ))
+
+    # 10. Pre-seed Initial Complaints (CPGRAMS Format)
+    initial_complaints = [
+        (
+            "CMP-2026-0001",
+            "CPGRAMS/2026/NEER-00042",
+            "USER-STUDENT-01",
+            "BLK-HSTL-A",
+            "Water leakage",
+            "Continuous water seepage and low tap pressure observed on 2nd floor washroom riser in Hostel Block A.",
+            "acknowledged",
+            "high",
+            "WO-HSTLA-01",
+            "Forwarded to Acoustic Leak Detection Specialist K. Priya."
+        ),
+        (
+            "CMP-2026-0002",
+            "CPGRAMS/2026/NEER-00043",
+            "USER-STUDENT-01",
+            "BLK-MESS",
+            "Damaged water infrastructure",
+            "Wash basin tap handle loose and dripping in Central Mess dining hall hand-wash section.",
+            "in_progress",
+            "medium",
+            None,
+            "Plumbing technician scheduled for afternoon inspection."
+        )
+    ]
+    for cid, ctrack, cuid, cbld, ccat, cdesc, cstat, cpri, cwo, cremarks in initial_complaints:
+        db.merge(Complaint(
+            id=cid,
+            tracking_id=ctrack,
+            user_id=cuid,
+            building_id=cbld,
+            category=ccat,
+            description=cdesc,
+            status=cstat,
+            priority=cpri,
+            assigned_work_order_id=cwo,
+            action_taken_remarks=cremarks
+        ))
+
+    # 11. Initialized Agent Token Usage Records
+    agents_list = ["Monitor", "Detector", "Localizer", "Forecaster", "Prioritizer", "Optimizer", "Verifier", "Interventor", "Measurer", "ScenarioParser"]
+    for ag in agents_list:
+        db.merge(AgentTokenUsage(
+            id=ag,
+            agent_name=ag,
+            total_requests=0,
+            total_input_tokens=0,
+            total_output_tokens=0,
+            total_thinking_tokens=0,
+            total_tokens=0,
+            total_cost_usd=0.0
+        ))
+
+    # Commit all seed data
     db.commit()
     print("Database seeding completed successfully.")
 

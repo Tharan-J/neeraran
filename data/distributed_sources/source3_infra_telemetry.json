@@ -1,0 +1,71 @@
+{
+  "source_id": "source_3",
+  "source_name": "Infrastructure SCADA & Pipe Pressure Telemetry",
+  "subsystem_type": "pressure_tanks",
+  "timestamp": "2026-10-31T07:18:29.158742+00:00",
+  "description": "Pipeline network pressure transducers, overhead tank level percentages, valve positions and gradient indicators for XGBoost leak detection",
+  "readings": [
+    {
+      "asset_id": "PIPE-OHT1-HSTLA",
+      "zone_type": "Hostel",
+      "metric": "pressure_bar",
+      "value": 2.3,
+      "unit": "bar",
+      "nominal_pressure_bar": 2.85,
+      "pressure_change_bar": -0.55,
+      "inlet_flow_lpm": 58.4,
+      "flow_change_lpm": 46.4,
+      "previous_1h_avg_pressure_bar": 2.82,
+      "previous_1h_avg_flow_lpm": 12.0,
+      "tank_level_pct": 74.5,
+      "quality": "valid",
+      "leak_flag": 1
+    },
+    {
+      "asset_id": "PIPE-SUMP-OHT1",
+      "zone_type": "Distribution main",
+      "metric": "pressure_bar",
+      "value": 3.35,
+      "unit": "bar",
+      "nominal_pressure_bar": 3.5,
+      "pressure_change_bar": -0.15,
+      "inlet_flow_lpm": 300.0,
+      "flow_change_lpm": 0.0,
+      "previous_1h_avg_pressure_bar": 3.48,
+      "previous_1h_avg_flow_lpm": 300.0,
+      "tank_level_pct": 76.5,
+      "quality": "valid",
+      "leak_flag": 0
+    },
+    {
+      "asset_id": "OHT-NORTH",
+      "zone_type": "Storage",
+      "metric": "level_m",
+      "value": 2.95,
+      "unit": "m",
+      "capacity_kl": 120.0,
+      "current_kl": 89.5,
+      "tank_level_pct": 74.5,
+      "quality": "valid"
+    },
+    {
+      "asset_id": "OHT-SOUTH",
+      "zone_type": "Storage",
+      "metric": "level_m",
+      "value": 2.7,
+      "unit": "m",
+      "capacity_kl": 100.0,
+      "current_kl": 76.2,
+      "tank_level_pct": 76.2,
+      "quality": "valid"
+    },
+    {
+      "asset_id": "VALVE-FEED-HSTLA",
+      "zone_type": "Valves",
+      "metric": "valve_state",
+      "value": 1.0,
+      "unit": "fraction",
+      "quality": "valid"
+    }
+  ]
+}

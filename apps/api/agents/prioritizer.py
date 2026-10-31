@@ -1,15 +1,19 @@
 """
 Agent 5: Prioritizer
-Ranks open cases using a transparent, configurable formula.
+Ranks open operational cases using a transparent, multi-criteria mathematical formula.
 Shows every term's score contribution (never a black box).
-Terms: loss_rate, population_affected, vulnerable_weight, urgency, repair_cost, crew_availability.
+Terms: loss_rate, population_affected, vulnerable_weight, urgency, crew_readiness.
+
+CRITICAL MANDATE (Requirement 5):
+Separates citizen complaint administrative priority from sensor-confirmed leak scores.
 """
 
 import time
 from typing import Dict, List, Any, Tuple
 from apps.api.agents.models import Case, AgentTrace
+from apps.api.agents.prompts import SYSTEM_PROMPT_PRIORITIZER
+from apps.api.ai.gemini_client import gemini_client
 
-# Default configurable weights
 DEFAULT_WEIGHTS = {
     "loss_rate": 0.30,
     "population": 0.20,
@@ -36,6 +40,7 @@ BLOCK_POPULATIONS = {
 class PrioritizerAgent:
     def __init__(self, weights: Dict[str, float] = None):
         self.name = "Prioritizer"
+        self.system_prompt = SYSTEM_PROMPT_PRIORITIZER
         self.weights = weights or DEFAULT_WEIGHTS.copy()
 
     def set_weights(self, new_weights: Dict[str, float]):
@@ -46,24 +51,25 @@ class PrioritizerAgent:
         loc = case.location
 
         # 1. Loss rate term (0-100 normalized)
-        # 100 kL/day = 100 points
         loss_term = min(100.0, (case.loss_rate_kl_day / 80.0) * 100.0)
 
         # 2. Population term
         pop = BLOCK_POPULATIONS.get(loc, 300)
         pop_term = min(100.0, (pop / 1500.0) * 100.0)
 
-        # 3. Vulnerability term
+        # 3. Vulnerability term (Hostels, Healthcare, Crèche get top priority)
         is_vuln = any(v in loc for v in VULNERABLE_BLOCKS)
         vuln_term = 100.0 if is_vuln else 25.0
 
-        # 4. Urgency term (leak vs watch vs fault)
+        # 4. Urgency term based on physical case severity
         if case.case_type == "leak":
             urgency_term = 90.0
         elif case.case_type == "shortage":
             urgency_term = 95.0
         elif case.case_type == "sensor_fault":
             urgency_term = 40.0
+        elif case.case_type == "unconfirmed_complaint":
+            urgency_term = 70.0  # High citizen attention, distinct from physical leak
         else:
             urgency_term = 20.0
 
@@ -99,8 +105,26 @@ class PrioritizerAgent:
             c.priority_score = b["total_score"]
             breakdowns[c.id] = b
 
-        # Sort descending by priority score
         ranked_cases = sorted(cases, key=lambda x: x.priority_score, reverse=True)
+
+        # Reasoning note
+        summary_note = f"Ranked {len(cases)} cases using multi-criteria weighted formula."
+        if gemini_client.is_available() and ranked_cases:
+            top_case = ranked_cases[0]
+            prompt = f"""Prioritizer Agent ranking summary:
+Top ranked case: {top_case.id} at {top_case.location} (score: {top_case.priority_score})
+Case type: {top_case.case_type}, Loss rate: {top_case.loss_rate_kl_day} kL/d
+Score terms: {breakdowns[top_case.id]['terms']}
+
+Provide a 1-sentence engineering justification for why this case was prioritized first."""
+            res = gemini_client.generate_for_agent(
+                agent_name=self.name,
+                prompt=prompt,
+                system_instruction=self.system_prompt,
+                incident_id=top_case.id
+            )
+            if res.get("success") and res.get("text"):
+                summary_note = res["text"].strip()
 
         execution_ms = (time.perf_counter() - t0) * 1000.0
         trace = AgentTrace(
@@ -111,7 +135,7 @@ class PrioritizerAgent:
             status="success",
             inputs={"cases_count": len(cases), "weights": self.weights},
             outputs={"ranked_case_ids": [c.id for c in ranked_cases], "score_breakdowns": breakdowns},
-            notes=f"Ranked {len(cases)} cases with transparent mathematical scoring formula."
+            notes=summary_note
         )
 
         return ranked_cases, trace

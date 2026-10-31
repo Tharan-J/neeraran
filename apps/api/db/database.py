@@ -257,6 +257,132 @@ class EvaluationRecord(Base):
     metrics_json = Column(Text)  # precision, recall, f1, mttd, smape, etc.
 
 
+# ===================== RBAC & USER MODELS =====================
+class User(Base):
+    __tablename__ = "users"
+    id = Column(String, primary_key=True)
+    email = Column(String, unique=True, index=True, nullable=False)
+    full_name = Column(String, nullable=False)
+    role = Column(String, default="student", index=True)  # admin, student, building_admin, engineer
+    assigned_building_id = Column(String, ForeignKey("assets.id"), nullable=True)
+    assigned_engineer_id = Column(String, ForeignKey("engineers.id"), nullable=True)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class Role(Base):
+    __tablename__ = "roles"
+    id = Column(String, primary_key=True)  # admin, student, building_admin, engineer
+    name = Column(String, nullable=False)
+    description = Column(String)
+
+
+class UserBuildingAssignment(Base):
+    __tablename__ = "user_building_assignments"
+    id = Column(String, primary_key=True)
+    user_id = Column(String, ForeignKey("users.id"), index=True)
+    building_id = Column(String, ForeignKey("assets.id"), index=True)
+    role = Column(String, default="building_admin")
+    assigned_at = Column(DateTime, default=datetime.utcnow)
+
+
+class Permission(Base):
+    __tablename__ = "permissions"
+    id = Column(String, primary_key=True)
+    role_id = Column(String, ForeignKey("roles.id"), index=True)
+    resource = Column(String, nullable=False)  # e.g. consumption, incidents, work_orders, approvals, settings
+    action = Column(String, nullable=False)    # read, write, approve, execute
+
+
+class AuthorizationEvent(Base):
+    __tablename__ = "authorization_events"
+    id = Column(String, primary_key=True)
+    user_id = Column(String, index=True)
+    role = Column(String)
+    resource = Column(String)
+    action = Column(String)
+    allowed = Column(Boolean)
+    reason = Column(String)
+    timestamp = Column(DateTime, default=datetime.utcnow)
+
+
+# ===================== COMPLAINTS & GRIEVANCES =====================
+class Complaint(Base):
+    __tablename__ = "complaints"
+    id = Column(String, primary_key=True)
+    tracking_id = Column(String, unique=True, index=True)  # CPGRAMS/2026/NEER-00042
+    user_id = Column(String, ForeignKey("users.id"), index=True)
+    building_id = Column(String, ForeignKey("assets.id"), index=True)
+    category = Column(String, nullable=False)
+    description = Column(Text, nullable=False)
+    image_url = Column(String, nullable=True)
+    status = Column(String, default="submitted", index=True)  # submitted, acknowledged, forwarded, in_progress, resolved, closed
+    priority = Column(String, default="medium")  # low, medium, high, emergency
+    assigned_work_order_id = Column(String, ForeignKey("work_orders.id"), nullable=True)
+    action_taken_remarks = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow)
+
+
+class ComplaintStatusHistory(Base):
+    __tablename__ = "complaint_status_history"
+    id = Column(String, primary_key=True)
+    complaint_id = Column(String, ForeignKey("complaints.id"), index=True)
+    status = Column(String, nullable=False)
+    notes = Column(Text)
+    changed_by = Column(String)
+    timestamp = Column(DateTime, default=datetime.utcnow)
+
+
+# ===================== GEMINI TOKEN & COST ACCOUNTING =====================
+class GeminiRequest(Base):
+    __tablename__ = "gemini_requests"
+    id = Column(String, primary_key=True)
+    request_id = Column(String, unique=True, index=True)
+    agent_name = Column(String, index=True)
+    agent_run_id = Column(String, index=True)
+    incident_id = Column(String, nullable=True, index=True)
+    model = Column(String, default="gemini-3.5-flash-lite")
+    start_time = Column(DateTime, default=datetime.utcnow)
+    completion_time = Column(DateTime, default=datetime.utcnow)
+    latency_ms = Column(Float, default=0.0)
+    input_tokens = Column(Integer, default=0)
+    output_tokens = Column(Integer, default=0)
+    thinking_tokens = Column(Integer, default=0)
+    cached_tokens = Column(Integer, default=0)
+    total_tokens = Column(Integer, default=0)
+    estimated_cost_usd = Column(Float, default=0.0)
+    status = Column(String, default="success")  # success, failed, fallback
+    retry_count = Column(Integer, default=0)
+    error_message = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class AgentTokenUsage(Base):
+    __tablename__ = "agent_token_usage"
+    id = Column(String, primary_key=True)  # agent_name
+    agent_name = Column(String, unique=True, index=True)
+    total_requests = Column(Integer, default=0)
+    total_input_tokens = Column(Integer, default=0)
+    total_output_tokens = Column(Integer, default=0)
+    total_thinking_tokens = Column(Integer, default=0)
+    total_tokens = Column(Integer, default=0)
+    total_cost_usd = Column(Float, default=0.0)
+    updated_at = Column(DateTime, default=datetime.utcnow)
+
+
+class ModelPricingConfig(Base):
+    __tablename__ = "model_pricing_config"
+    id = Column(String, primary_key=True)
+    model_name = Column(String, unique=True)
+    input_price_per_million = Column(Float, default=0.30)
+    output_price_per_million = Column(Float, default=2.50)
+    pricing_tier = Column(String, default="standard_paid")
+    version = Column(String, default="2026-v1")
+    is_active = Column(Boolean, default=True)
+    updated_at = Column(DateTime, default=datetime.utcnow)
+
+
 def get_db():
     db = SessionLocal()
     try:

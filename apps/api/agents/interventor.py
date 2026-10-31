@@ -1,7 +1,11 @@
 """
 Agent 7: Interventor and Measurer
-Dispatches approved actions to enterprise tools, manages human approval queue,
+Dispatches approved non-consequential tools, stages consequential actions into the human approval queue,
 and measures counterfactual outcomes (water saved, INR saved, estimation error).
+
+OPERATIONAL SAFETY MANDATE:
+No consequential action (valve throttling affecting residential potable water, pump shutdown)
+can execute silently without explicit human manager approval.
 """
 
 import time
@@ -10,12 +14,14 @@ import uuid
 from datetime import datetime
 from typing import Dict, List, Any, Tuple
 from apps.api.agents.models import Plan, Case, AgentTrace
+from apps.api.agents.prompts import SYSTEM_PROMPT_INTERVENTOR
 from apps.api.tools.enterprise_tools import enterprise_tools
 from apps.api.db.database import SessionLocal, Approval, WorkOrder, InterventionPlan, AuditLog
 
 class InterventorAgent:
     def __init__(self):
         self.name = "Interventor"
+        self.system_prompt = SYSTEM_PROMPT_INTERVENTOR
 
     def stage_plan_for_execution(self, case: Case, plan: Plan) -> Tuple[Dict[str, Any], AgentTrace]:
         t0 = time.perf_counter()
@@ -23,7 +29,6 @@ class InterventorAgent:
         pending_approvals = []
 
         with SessionLocal() as db:
-            # Save intervention plan in database
             db_plan = InterventionPlan(
                 id=plan.id,
                 incident_id=case.id,
@@ -40,7 +45,6 @@ class InterventorAgent:
 
             for step in plan.steps:
                 if step.requires_approval:
-                    # Stage into Approval queue
                     app_id = f"APP-{uuid.uuid4().hex[:6].upper()}"
                     equity_text = (
                         "Vulnerable block protected: minimum supply constraint strictly held at 85% baseline. No student potable water cutoff."
@@ -60,7 +64,6 @@ class InterventorAgent:
                     db.merge(approval)
                     pending_approvals.append(app_id)
                 else:
-                    # Non-consequential step (e.g. create CMMS ticket or notify) can execute immediately
                     if step.tool == "create_cmms_ticket":
                         res = enterprise_tools.create_cmms_ticket(
                             block=step.args.get("block", case.location),
@@ -97,11 +100,12 @@ class InterventorAgent:
         """
         Calculates counterfactual outcome:
         Compares actual metered reduction with pre-intervention estimate.
+        Costing in INR (₹).
         """
         estimated_kl_day = case.loss_rate_kl_day
         actual_kl_day_saved = round((measured_loss_reduction_lpm * 1440.0) / 1000.0, 1)
 
-        inr_per_kl = 42.0  # Campus cost of tanker / treated water
+        inr_per_kl = 42.0  # Campus cost of treated water in INR
         actual_inr_saved = round(actual_kl_day_saved * inr_per_kl, 0)
         reserve_hours_gained = round(actual_kl_day_saved / 6.5, 1)
 

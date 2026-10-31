@@ -5,13 +5,16 @@ Calculates days of reserve and adds shortage evidence if depletion threatens saf
 """
 
 import time
-from typing import Dict, List, Any, Tuple
+from typing import Dict, List, Any, Tuple, Optional
 from apps.api.agents.models import Case, Evidence, AgentTrace
 from apps.api.ml.gateway import ml_gateway
+from apps.api.agents.prompts import SYSTEM_PROMPT_FORECASTER
+from apps.api.ai.gemini_client import gemini_client
 
 class ForecasterAgent:
     def __init__(self):
         self.name = "Forecaster"
+        self.system_prompt = SYSTEM_PROMPT_FORECASTER
 
     def run(self, snapshot: Dict[str, Any], case: Optional[Case] = None) -> Tuple[Dict[str, Any], AgentTrace]:
         t0 = time.perf_counter()
@@ -21,48 +24,82 @@ class ForecasterAgent:
 
         # 1. 72-hour forecast for Central Sump and Overhead Tanks
         sump_info = tanks.get("SUMP-CENTRAL", {"current_kl": 350.0, "capacity_kl": 500.0, "safety_level_kl": 100.0})
+        total_inflow = snapshot.get("total_inflow_lpm", 450.0)
+        total_consumption = snapshot.get("total_consumption_lpm", 400.0)
+
+        # Incorporate active uncontained leak loss if case exists
+        loss_lpm = (case.loss_rate_kl_day * 1000.0 / 1440.0) if (case and case.case_type == "leak") else 0.0
+        effective_outflow = total_consumption + loss_lpm
+
         sump_res = ml_gateway.forecast_shortage(
             tank_id="SUMP-CENTRAL",
-            current_level_kl=sump_info["current_kl"],
-            capacity_kl=sump_info["capacity_kl"],
-            safety_level_kl=sump_info["safety_level_kl"],
-            inflow_rate_lpm=snapshot.get("total_inflow_lpm", 450.0),
-            outflow_rate_lpm=snapshot.get("total_consumption_lpm", 400.0)
+            current_level_kl=sump_info.get("current_kl", 380.0),
+            capacity_kl=sump_info.get("capacity_kl", 500.0),
+            safety_level_kl=sump_info.get("safety_level_kl", 100.0),
+            inflow_rate_lpm=total_inflow,
+            outflow_rate_lpm=effective_outflow
         )
 
         # 2. Demand forecast for representative block
+        rep_block = case.location if (case and "BLK" in case.location) else "BLK-HSTL-A"
         demand_res = ml_gateway.forecast_demand(
-            block_id="BLK-HSTL-A",
+            block_id=rep_block,
             nominal_kl_day=85.0,
             current_hour=hour,
             day_of_week=day_of_week
         )
 
+        # Days of reserve calculation
+        total_stored_kl = snapshot.get("total_stored_kl", 420.0)
+        daily_consumption_kl = (total_consumption * 1440.0) / 1000.0
+        days_of_reserve = round(total_stored_kl / max(10.0, daily_consumption_kl), 2)
+
         forecast_data = {
-            "sump_trajectory_72h": sump_res["trajectory"][:24],  # 24h sample for UI
+            "sump_trajectory_72h": sump_res["trajectory"][:24],
             "hours_to_critical_sump": sump_res["hours_to_critical"],
-            "days_of_reserve_campus": snapshot.get("days_of_reserve", 2.8),
+            "days_of_reserve_campus": days_of_reserve,
             "block_demand_sample": demand_res["forecast_series"][:24],
             "mean_smape_error_pct": demand_res["mean_smape_pct"]
         }
 
-        # If a case is provided, check if tank depletion adds corroborating evidence
+        # Corroborating tank depletion evidence
         if case and case.case_type == "leak":
             tank_target = "OHT-NORTH" if "HSTL" in case.location else "OHT-SOUTH"
-            t_data = tanks.get(tank_target, {"current_kl": 75.0, "safety_level_kl": 25.0})
+            t_data = tanks.get(tank_target, {"current_kl": 75.0, "capacity_kl": 120.0, "safety_level_kl": 25.0})
             evid_id = f"EVID-FOR-{len(case.evidence)+301:03d}"
+            curr_kl = t_data.get("current_kl", 75.0)
+            baseline_kl = t_data.get("capacity_kl", 120.0) * 0.75
             case.evidence.append(Evidence(
                 id=evid_id,
                 kind="tank_depletion",
-                source="model",
+                source="storage_forecaster",
                 block_or_node=tank_target,
-                tick_range=f"tick {snapshot.get('tick')}",
-                value=round(t_data["current_kl"], 1),
-                baseline=round(t_data.get("capacity_kl", 120.0) * 0.75, 1),
+                tick_range=f"tick {snapshot.get('tick', 0)}",
+                value=round(curr_kl, 1),
+                baseline=round(baseline_kl, 1),
                 unit="kL",
-                note=f"{tank_target} storage is drawing down at accelerated rate, reserve time diminished to {snapshot.get('days_of_reserve', 2.8)} days.",
+                note=f"{tank_target} storage is drawing down at accelerated rate; reserve longevity calculated at {days_of_reserve} days.",
                 verified=True
             ))
+
+        # LLM Synthesis
+        notes = f"72h forecast completed: {days_of_reserve} days of reserve. Hours to critical sump: {sump_res['hours_to_critical']}h."
+        if gemini_client.is_available() and case:
+            prompt = f"""Forecaster Agent assessment for {case.location}:
+Total stored water: {total_stored_kl} kL
+Daily consumption: {daily_consumption_kl:.1f} kL/day
+Days of reserve: {days_of_reserve} days
+Hours to critical threshold: {sump_res['hours_to_critical']} hours
+
+Provide a 1-sentence forecast summary explaining storage risk."""
+            res = gemini_client.generate_for_agent(
+                agent_name=self.name,
+                prompt=prompt,
+                system_instruction=self.system_prompt,
+                incident_id=case.id
+            )
+            if res.get("success") and res.get("text"):
+                notes = res["text"].strip()
 
         execution_ms = (time.perf_counter() - t0) * 1000.0
         trace = AgentTrace(
@@ -71,9 +108,9 @@ class ForecasterAgent:
             ended_at=time.strftime("%H:%M:%S"),
             execution_time_ms=round(execution_ms, 2),
             status="success",
-            inputs={"current_storage_kl": snapshot.get("total_stored_kl")},
-            outputs={"days_of_reserve": snapshot.get("days_of_reserve"), "hours_to_critical": sump_res["hours_to_critical"]},
-            notes="Forecast generated with 80% confidence interval and Holt-Winters comparison."
+            inputs={"current_storage_kl": total_stored_kl, "inflow_lpm": total_inflow, "consumption_lpm": total_consumption},
+            outputs={"days_of_reserve": days_of_reserve, "hours_to_critical": sump_res["hours_to_critical"]},
+            notes=notes
         )
 
         return forecast_data, trace

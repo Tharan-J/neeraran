@@ -1,0 +1,65 @@
+{
+  "source_id": "source_1",
+  "source_name": "Water Supply & Reservoirs Subsystem",
+  "subsystem_type": "supply_inlet",
+  "timestamp": "2026-10-31T07:18:29.158742+00:00",
+  "description": "Municipal bulk supply, deep aquifer borewell yields, central sump reservoir levels",
+  "readings": [
+    {
+      "asset_id": "INLET-MUNI",
+      "metric": "flow_lpm",
+      "value": 310.5,
+      "unit": "L/min",
+      "quality": "valid",
+      "status": "optimal"
+    },
+    {
+      "asset_id": "BORE-01",
+      "metric": "yield_lpm",
+      "value": 118.4,
+      "unit": "L/min",
+      "quality": "valid",
+      "status": "running"
+    },
+    {
+      "asset_id": "BORE-02",
+      "metric": "yield_lpm",
+      "value": 94.2,
+      "unit": "L/min",
+      "quality": "valid",
+      "status": "running"
+    },
+    {
+      "asset_id": "SUMP-CENTRAL",
+      "metric": "level_m",
+      "value": 3.65,
+      "unit": "m",
+      "quality": "valid",
+      "status": "normal"
+    },
+    {
+      "asset_id": "SUMP-CENTRAL",
+      "metric": "volume_kl",
+      "value": 382.5,
+      "unit": "kL",
+      "quality": "valid",
+      "status": "normal"
+    },
+    {
+      "asset_id": "PUMP-TRANSFER-N",
+      "metric": "pump_status",
+      "value": 1.0,
+      "unit": "state",
+      "quality": "valid",
+      "status": "active"
+    },
+    {
+      "asset_id": "PUMP-TRANSFER-S",
+      "metric": "pump_status",
+      "value": 0.0,
+      "unit": "state",
+      "quality": "valid",
+      "status": "standby"
+    }
+  ]
+}

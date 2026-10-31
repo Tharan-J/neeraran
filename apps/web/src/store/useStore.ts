@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-export type UserRole = 'admin' | 'viewer';
+export type UserRole = 'admin' | 'student' | 'building_admin' | 'engineer';
 export type ViewerLens = 'warden' | 'sustainability' | 'student' | 'maintenance';
 
 export interface SimulationState {
@@ -30,6 +30,12 @@ export interface SimulationState {
 interface AppStore {
   role: UserRole;
   setRole: (role: UserRole) => void;
+  userId: string;
+  setUserId: (id: string) => void;
+  assignedBuildingId: string | null;
+  setAssignedBuildingId: (id: string | null) => void;
+  assignedEngineerId: string | null;
+  setAssignedEngineerId: (id: string | null) => void;
   viewerLens: ViewerLens;
   setViewerLens: (lens: ViewerLens) => void;
   isNightOps: boolean;
@@ -50,8 +56,32 @@ export const useStore = create<AppStore>((set) => ({
   role: (sessionStorage.getItem('neeraran_role') as UserRole) || 'admin',
   setRole: (role) => {
     sessionStorage.setItem('neeraran_role', role);
-    set({ role });
+    let uid = 'USER-ADMIN-01';
+    let bld: string | null = null;
+    let eng: string | null = null;
+    if (role === 'student') {
+      uid = 'USER-STUDENT-01';
+      bld = 'BLK-HSTL-A';
+    } else if (role === 'building_admin') {
+      uid = 'USER-BLDADM-01';
+      bld = 'BLK-HSTL-A';
+    } else if (role === 'engineer') {
+      uid = 'USER-ENG-01';
+      eng = 'ENG-02';
+      bld = 'BLK-HSTL-A';
+    }
+    sessionStorage.setItem('neeraran_user_id', uid);
+    set({ role, userId: uid, assignedBuildingId: bld, assignedEngineerId: eng });
   },
+  userId: sessionStorage.getItem('neeraran_user_id') || 'USER-ADMIN-01',
+  setUserId: (userId) => {
+    sessionStorage.setItem('neeraran_user_id', userId);
+    set({ userId });
+  },
+  assignedBuildingId: 'BLK-HSTL-A',
+  setAssignedBuildingId: (assignedBuildingId) => set({ assignedBuildingId }),
+  assignedEngineerId: 'ENG-02',
+  setAssignedEngineerId: (assignedEngineerId) => set({ assignedEngineerId }),
   viewerLens: 'warden',
   setViewerLens: (viewerLens) => set({ viewerLens }),
   isNightOps: false,

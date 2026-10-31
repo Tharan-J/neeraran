@@ -1,8 +1,11 @@
 """
-NEERARAN Distributed Data Source Simulators
-Four independent producers matching the 5-laptop deployment architecture.
-Each source authenticates using its API key, connects to the central API,
-and transmits timestamped readings over HTTP.
+NEERARAN Distributed Laptop Data Source Simulators
+Four independent producers matching the 5-laptop demonstration architecture.
+
+Source 1 (Laptop 2): Water Supply & Reservoirs (source1_supply_reservoir.json)
+Source 2 (Laptop 3): Building Flow Meters & Diurnal Metrics (source2_flow_consumption.json)
+Source 3 (Laptop 4): Infrastructure SCADA & Pipe Pressure (source3_infra_telemetry.json)
+Source 4 (Laptop 5): Weather Radar & Citizen Grievance Portal (source4_operational_weather_grievance.json)
 """
 
 import os
@@ -20,30 +23,38 @@ SOURCE_CONFIGS = {
     1: {
         "id": "source_1",
         "name": "Water Supply & Reservoirs Subsystem",
+        "laptop_label": "Laptop 2 (Supply & Reservoirs)",
         "key": "neeraran-source-1-supply-secret",
         "type": "supply",
-        "interval_sec": 3.0
+        "interval_sec": 3.0,
+        "json_file": "data/distributed_sources/source1_supply_reservoir.json"
     },
     2: {
         "id": "source_2",
-        "name": "Building Consumption Meters",
+        "name": "Building Consumption & Smart Flow Sensors",
+        "laptop_label": "Laptop 3 (Flow & Smart Meters)",
         "key": "neeraran-source-2-consumption-secret",
         "type": "consumption",
-        "interval_sec": 3.0
+        "interval_sec": 3.0,
+        "json_file": "data/distributed_sources/source2_flow_consumption.json"
     },
     3: {
         "id": "source_3",
         "name": "Infrastructure Telemetry (Pressure & Tanks)",
+        "laptop_label": "Laptop 4 (Pressure & SCADA)",
         "key": "neeraran-source-3-infra-secret",
         "type": "telemetry",
-        "interval_sec": 3.0
+        "interval_sec": 3.0,
+        "json_file": "data/distributed_sources/source3_infra_telemetry.json"
     },
     4: {
         "id": "source_4",
-        "name": "Operational Information & Environment",
+        "name": "Operational Weather & Citizen Grievance Portal",
+        "laptop_label": "Laptop 5 (Environment & Grievances)",
         "key": "neeraran-source-4-ops-secret",
         "type": "operations",
-        "interval_sec": 5.0
+        "interval_sec": 5.0,
+        "json_file": "data/distributed_sources/source4_operational_weather_grievance.json"
     }
 }
 
@@ -54,117 +65,87 @@ class SourceSimulator:
         self.config = SOURCE_CONFIGS[source_num]
         self.source_id = self.config["id"]
         self.name = self.config["name"]
+        self.laptop_label = self.config["laptop_label"]
         self.api_key = self.config["key"]
         self.base_url = base_url.rstrip("/")
         self.interval = self.config["interval_sec"]
+        self.json_file_path = self.config.get("json_file")
+        self.raw_data = self._load_json_data()
         self.is_running = True
         self.transmission_count = 0
         self.last_status = "initialized"
 
-    def send_telemetry_batch(self, events: list) -> bool:
-        """Sends batch of readings to POST /api/v1/telemetry with source credentials."""
-        url = f"{self.base_url}/api/v1/telemetry"
+    def _load_json_data(self) -> dict:
+        if not self.json_file_path or not os.path.exists(self.json_file_path):
+            # Try finding relative to workspace root
+            root_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", self.json_file_path))
+            if os.path.exists(root_path):
+                self.json_file_path = root_path
+            else:
+                print(f"Warning: JSON file not found at {self.json_file_path}")
+                return {}
+
+        try:
+            with open(self.json_file_path, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception as e:
+            print(f"Warning: Failed to load {self.json_file_path}: {e}")
+            return {}
+
+    def get_payload(self) -> dict:
+        """Constructs fresh payload timestamped to current UTC second."""
+        now = datetime.now(timezone.utc).isoformat()
+        payload = dict(self.raw_data) if self.raw_data else {}
+        payload["source_id"] = self.source_id
+        payload["timestamp"] = now
+        payload["laptop_label"] = self.laptop_label
+        payload["demonstration_mode"] = "simulated_laptop_telemetry"
+
+        # Update readings timestamps
+        if "readings" in payload:
+            for r in payload["readings"]:
+                r["timestamp"] = now
+                r["source_id"] = self.source_id
+
+        return payload
+
+    def send_payload(self) -> bool:
+        """Transmits payload to POST /api/v1/sources/{source_id}/telemetry."""
+        payload = self.get_payload()
+        url = f"{self.base_url}/api/v1/sources/{self.source_id}/telemetry"
         headers = {
             "Content-Type": "application/json",
             "X-Source-ID": self.source_id,
             "X-API-Key": self.api_key
         }
         try:
-            resp = requests.post(url, json={"events": events}, headers=headers, timeout=4.0)
+            resp = requests.post(url, json=payload, headers=headers, timeout=5.0)
             if resp.status_code in [200, 201]:
-                self.transmission_count += len(events)
-                self.last_status = f"HTTP {resp.status_code} OK (sent {len(events)} events)"
+                reading_count = len(payload.get("readings", [])) or (1 if "weather" in payload else 0)
+                self.transmission_count += 1
+                self.last_status = f"HTTP {resp.status_code} OK (sent {reading_count} items)"
                 return True
             else:
-                self.last_status = f"HTTP {resp.status_code} Error: {resp.text[:100]}"
+                self.last_status = f"HTTP {resp.status_code} Error: {resp.text[:120]}"
                 return False
         except Exception as e:
             self.last_status = f"Connection failed: {str(e)[:80]}"
             return False
 
-    def generate_source_1_readings(self) -> list:
-        """Source 1: Municipal supply, reservoir levels, inflow, borewell yield, pump readings."""
-        now = datetime.now(timezone.utc).isoformat()
-        events = [
-            {"source_id": self.source_id, "asset_id": "INLET-MUNI", "timestamp": now, "metric": "flow_lpm", "value": round(random.uniform(280.0, 320.0), 1), "unit": "L/min"},
-            {"source_id": self.source_id, "asset_id": "BORE-01", "timestamp": now, "metric": "yield_lpm", "value": round(random.uniform(115.0, 122.0), 1), "unit": "L/min"},
-            {"source_id": self.source_id, "asset_id": "BORE-02", "timestamp": now, "metric": "yield_lpm", "value": round(random.uniform(92.0, 97.0), 1), "unit": "L/min"},
-            {"source_id": self.source_id, "asset_id": "SUMP-CENTRAL", "timestamp": now, "metric": "level_m", "value": round(random.uniform(3.4, 3.8), 2), "unit": "m"},
-            {"source_id": self.source_id, "asset_id": "SUMP-CENTRAL", "timestamp": now, "metric": "volume_kl", "value": round(random.uniform(360.0, 395.0), 1), "unit": "kL"},
-        ]
-        return events
-
-    def generate_source_2_readings(self) -> list:
-        """Source 2: Block consumption, minimum night flow, occupancy demand, meter readings."""
-        now = datetime.now(timezone.utc).isoformat()
-        blocks = [
-            ("BLK-HSTL-A", 45.0, 65.0),
-            ("BLK-HSTL-B", 40.0, 58.0),
-            ("BLK-HSTL-C", 50.0, 72.0),
-            ("BLK-MESS", 35.0, 50.0),
-            ("BLK-HLTH", 8.0, 14.0),
-            ("BLK-ACAD-1", 18.0, 26.0),
-            ("BLK-ACAD-2", 16.0, 24.0),
-            ("BLK-LIB", 6.0, 10.0),
-        ]
-        events = []
-        for bid, min_flow, max_flow in blocks:
-            flow = round(random.uniform(min_flow, max_flow), 1)
-            events.append({
-                "source_id": self.source_id,
-                "asset_id": bid,
-                "timestamp": now,
-                "metric": "flow_lpm",
-                "value": flow,
-                "unit": "L/min"
-            })
-        return events
-
-    def generate_source_3_readings(self) -> list:
-        """Source 3: Pipeline pressure, overhead tank levels, pump status, valve status."""
-        now = datetime.now(timezone.utc).isoformat()
-        events = [
-            {"source_id": self.source_id, "asset_id": "OHT-NORTH", "timestamp": now, "metric": "level_m", "value": round(random.uniform(2.8, 3.2), 2), "unit": "m"},
-            {"source_id": self.source_id, "asset_id": "OHT-SOUTH", "timestamp": now, "metric": "level_m", "value": round(random.uniform(2.5, 2.9), 2), "unit": "m"},
-            {"source_id": self.source_id, "asset_id": "OHT-EAST", "timestamp": now, "metric": "level_m", "value": round(random.uniform(3.0, 3.4), 2), "unit": "m"},
-            {"source_id": self.source_id, "asset_id": "OHT-WEST", "timestamp": now, "metric": "level_m", "value": round(random.uniform(2.2, 2.6), 2), "unit": "m"},
-            {"source_id": self.source_id, "asset_id": "PIPE-SUMP-OHT1", "timestamp": now, "metric": "pressure_bar", "value": round(random.uniform(3.1, 3.4), 2), "unit": "bar"},
-            {"source_id": self.source_id, "asset_id": "PIPE-OHT1-HSTLA", "timestamp": now, "metric": "pressure_bar", "value": round(random.uniform(2.6, 2.9), 2), "unit": "bar"},
-            {"source_id": self.source_id, "asset_id": "PIPE-OHT3-MESS", "timestamp": now, "metric": "pressure_bar", "value": round(random.uniform(2.8, 3.1), 2), "unit": "bar"},
-        ]
-        return events
-
-    def generate_source_4_readings(self) -> list:
-        """Source 4: Weather, rainfall, complaints, maintenance records, inspection findings."""
-        now = datetime.now(timezone.utc).isoformat()
-        events = [
-            {"source_id": self.source_id, "asset_id": "CAMPUS", "timestamp": now, "metric": "temperature_c", "value": round(random.uniform(27.0, 32.0), 1), "unit": "C"},
-            {"source_id": self.source_id, "asset_id": "CAMPUS", "timestamp": now, "metric": "rainfall_mm", "value": 0.0, "unit": "mm/h"},
-            {"source_id": self.source_id, "asset_id": "CAMPUS", "timestamp": now, "metric": "humidity_pct", "value": round(random.uniform(55.0, 72.0), 1), "unit": "%"}
-        ]
-        return events
-
-    def get_readings(self) -> list:
-        if self.config["type"] == "supply":
-            return self.generate_source_1_readings()
-        elif self.config["type"] == "consumption":
-            return self.generate_source_2_readings()
-        elif self.config["type"] == "telemetry":
-            return self.generate_source_3_readings()
-        else:
-            return self.generate_source_4_readings()
-
     def run_loop(self):
-        print(f"[{self.source_id}] Starting simulator: {self.name}")
-        print(f"Connecting to Central NEERARAN at: {self.base_url}")
-        print("Press Ctrl+C to stop.\n")
+        print(f"\033[1;34m===============================================================\033[0m")
+        print(f"\033[1;32m  NEERARAN Distributed Sender: {self.laptop_label}\033[0m")
+        print(f"  Source ID: {self.source_id} ({self.name})")
+        print(f"  Target Central API: {self.base_url}")
+        print(f"  JSON Source File: {self.json_file_path}")
+        print(f"  Transmission Interval: {self.interval}s")
+        print(f"\033[1;34m===============================================================\033[0m\n")
 
         while self.is_running:
-            readings = self.get_readings()
-            success = self.send_telemetry_batch(readings)
+            success = self.send_payload()
             ts = datetime.now().strftime("%H:%M:%S")
-            status_symbol = "✓" if success else "✗"
-            print(f"[{ts}] {status_symbol} {self.source_id}: {self.last_status} (Total: {self.transmission_count})")
+            status_symbol = "\033[1;32m✓\033[0m" if success else "\033[1;31m✗\033[0m"
+            print(f"[{ts}] {status_symbol} [{self.source_id}] {self.last_status} | Batches transmitted: {self.transmission_count}")
             time.sleep(self.interval)
 
 if __name__ == "__main__":
@@ -177,4 +158,4 @@ if __name__ == "__main__":
     try:
         sim.run_loop()
     except KeyboardInterrupt:
-        print(f"\n[{sim.source_id}] Simulator stopped by user.")
+        print(f"\n\033[1;33m[{sim.source_id}] Simulator stopped by user.\033[0m")

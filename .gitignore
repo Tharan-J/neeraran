@@ -1,6 +1,12 @@
 node_modules
 dist
 __pycache__
+**/__pycache__/**
 .pytest_cache
 *.pyc
+**/*.pyc
 .env
+
+# Large training datasets
+models/*.csv
+models/*.CSV

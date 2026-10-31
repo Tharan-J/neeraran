@@ -9,6 +9,8 @@ import os
 import sys
 import time
 import json
+import uuid
+import random
 import asyncio
 import hashlib
 from typing import List, Dict, Any, Optional
@@ -25,7 +27,9 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../.
 from apps.api.db.database import (
     get_db, Session, Asset, DataSource, TelemetryEvent, LatestAssetState,
     DataQualityException, Incident, IncidentEvidence, InterventionPlan,
-    Engineer, WorkOrder, Approval, AuditLog, EvaluationRecord, init_db
+    Engineer, WorkOrder, Approval, AuditLog, EvaluationRecord, init_db,
+    Role, User, UserBuildingAssignment, Permission, Complaint, ComplaintStatusHistory,
+    ModelPricingConfig, AgentTokenUsage, GeminiRequest
 )
 from apps.api.db.seeds import seed_database
 from apps.api.sim.simulator import simulator
@@ -91,15 +95,114 @@ class ScenarioInjectRequest(BaseModel):
 class PrioritizerWeightsRequest(BaseModel):
     weights: Dict[str, float]
 
+class ComplaintCreateRequest(BaseModel):
+    building_id: str
+    category: str
+    description: str
+    priority: Optional[str] = "medium"
+
+class ComplaintUpdateRequest(BaseModel):
+    status: Optional[str] = None
+    action_taken_remarks: Optional[str] = None
+    assigned_work_order_id: Optional[str] = None
+    forward_to_maintenance: Optional[bool] = False
+
+class WorkOrderStatusRequest(BaseModel):
+    status: str
+    findings: Optional[str] = None
+
+class PricingUpdateRequest(BaseModel):
+    input_price_per_million: float
+    output_price_per_million: float
+
 # ----------------- RBAC & AUTH HELPERS -----------------
-def verify_admin_role(x_user_role: Optional[str] = Header(None, alias="X-User-Role")):
+ROLE_PERMISSIONS = {
+    "admin": [
+        "manage_infrastructure", "manage_users", "manage_models",
+        "approve_interventions", "view_traces", "view_gemini_accounting",
+        "inject_scenarios", "view_all_buildings", "view_all_complaints",
+        "manage_work_orders", "view_scada_topology"
+    ],
+    "student": [
+        "view_own_building_awareness", "view_conservation_tips",
+        "submit_complaint", "view_own_complaints"
+    ],
+    "building_admin": [
+        "view_assigned_building", "view_building_alerts",
+        "view_building_complaints", "forward_complaint",
+        "request_inspection", "acknowledge_building_alerts"
+    ],
+    "engineer": [
+        "view_assigned_work_orders", "update_work_order",
+        "submit_findings", "request_materials"
+    ]
+}
+
+def get_current_user(
+    x_user_role: Optional[str] = Header(None, alias="X-User-Role"),
+    x_user_id: Optional[str] = Header(None, alias="X-User-ID"),
+    db: Session = Depends(get_db)
+) -> User:
+    """
+    Authenticates/resolves current operational user.
+    Reads X-User-ID or X-User-Role, defaulting to demo users seeded in database.
+    """
+    if x_user_id:
+        user = db.query(User).filter(User.id == x_user_id).first()
+        if user:
+            return user
+
+    if x_user_role:
+        role = x_user_role.lower().strip()
+        user = db.query(User).filter(User.role == role).first()
+        if user:
+            return user
+        # Non-seeded or transient role passed by client
+        return User(
+            id=f"USER-{role.upper()}-DEMO",
+            email=f"{role}@neeraran.edu",
+            full_name=f"{role.capitalize()} User",
+            role=role,
+            assigned_building_id="BLK-HSTL-A" if role in ["student", "building_admin"] else None,
+            assigned_engineer_id="ENG-02" if role == "engineer" else None,
+            is_active=True
+        )
+
+    # Fallback default admin user if no header passed
+    user = db.query(User).filter(User.role == "admin").first()
+    if user:
+        return user
+
+    return User(
+        id="USER-ADMIN-01",
+        email="admin@neeraran.edu",
+        full_name="Dr. K. Swaminathan",
+        role="admin",
+        assigned_building_id=None,
+        assigned_engineer_id=None,
+        is_active=True
+    )
+
+def require_roles(*allowed_roles):
+    """Dependency that enforces caller belongs to one of allowed roles."""
+    def role_checker(user: User = Depends(get_current_user)):
+        if user.role not in allowed_roles:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Forbidden: Action requires role in {list(allowed_roles)}. Current role: '{user.role}'."
+            )
+        return user
+    return role_checker
+
+def verify_admin_role(user: User = Depends(get_current_user)):
     """Enforces that only Admin role can execute consequential operations."""
-    if x_user_role != "admin":
+    if user.role != "admin":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Forbidden: This consequential operation requires Estate Admin authorization."
         )
     return True
+
 
 # ----------------- ENDPOINTS -----------------
 
@@ -188,6 +291,292 @@ def ingest_telemetry(
 
     db.commit()
     return {"status": "success", "ingested_events": valid_count}
+
+# -------------------------------------------------------------
+# Laptop Telemetry Sources Registry (4 Distributed Laptops)
+# -------------------------------------------------------------
+LAPTOP_SOURCES_STATE: Dict[str, Dict[str, Any]] = {
+    "source_1": {
+        "source_id": "source_1",
+        "name": "Water Supply & Reservoirs Subsystem",
+        "laptop_label": "Laptop 2 (Supply & Reservoirs)",
+        "subsystem_type": "supply_inlet",
+        "latest_receipt_time": None,
+        "reading_count": 0,
+        "data_quality_status": "waiting",
+        "demonstration_label": "Simulated laptop telemetry for demonstration",
+        "latest_payload": None
+    },
+    "source_2": {
+        "source_id": "source_2",
+        "name": "Building Consumption & Smart Flow Sensors",
+        "laptop_label": "Laptop 3 (Flow & Smart Meters)",
+        "subsystem_type": "flow_metering",
+        "latest_receipt_time": None,
+        "reading_count": 0,
+        "data_quality_status": "waiting",
+        "demonstration_label": "Simulated laptop telemetry for demonstration",
+        "latest_payload": None
+    },
+    "source_3": {
+        "source_id": "source_3",
+        "name": "Infrastructure Telemetry (Pressure & Tanks)",
+        "laptop_label": "Laptop 4 (Pressure & SCADA)",
+        "subsystem_type": "pressure_tanks",
+        "latest_receipt_time": None,
+        "reading_count": 0,
+        "data_quality_status": "waiting",
+        "demonstration_label": "Simulated laptop telemetry for demonstration",
+        "latest_payload": None
+    },
+    "source_4": {
+        "source_id": "source_4",
+        "name": "Operational Weather & Citizen Grievance Portal",
+        "laptop_label": "Laptop 5 (Environment & Grievances)",
+        "subsystem_type": "weather_grievance",
+        "latest_receipt_time": None,
+        "reading_count": 0,
+        "data_quality_status": "waiting",
+        "demonstration_label": "Simulated laptop telemetry for demonstration",
+        "latest_payload": None
+    }
+}
+
+@app.post("/api/v1/sources/{source_id}/telemetry", status_code=status.HTTP_201_CREATED)
+async def ingest_source_telemetry(
+    source_id: str,
+    payload: Dict[str, Any],
+    x_source_id: Optional[str] = Header(None, alias="X-Source-ID"),
+    x_api_key: Optional[str] = Header(None, alias="X-API-Key"),
+    db: Session = Depends(get_db)
+):
+    if source_id not in LAPTOP_SOURCES_STATE:
+        raise HTTPException(status_code=404, detail=f"Unknown source {source_id}")
+
+    now = datetime.now(timezone.utc)
+    now_iso = now.isoformat()
+    readings = payload.get("readings", [])
+    ingested_count = 0
+
+    import uuid
+    for item in readings:
+        aid = item.get("asset_id")
+        metric = item.get("metric")
+        val = item.get("value")
+        unit = item.get("unit", "")
+        if not aid or not metric or val is None:
+            continue
+
+        t_event = TelemetryEvent(
+            id=f"TEL-{uuid.uuid4().hex}",
+            source_id=source_id,
+            asset_id=aid,
+            timestamp=now,
+            metric=metric,
+            value=float(val),
+            unit=unit,
+            quality="valid"
+        )
+        db.add(t_event)
+
+        latest = db.query(LatestAssetState).filter(
+            LatestAssetState.asset_id == aid,
+            LatestAssetState.metric == metric
+        ).first()
+        if latest:
+            latest.value = float(val)
+            latest.updated_at = now
+        else:
+            db.add(LatestAssetState(
+                asset_id=aid,
+                metric=metric,
+                value=float(val),
+                unit=unit,
+                updated_at=now
+            ))
+        ingested_count += 1
+
+    if "weather" in payload:
+        w = payload["weather"]
+        for k, v in w.items():
+            if isinstance(v, (int, float)):
+                latest = db.query(LatestAssetState).filter(
+                    LatestAssetState.asset_id == "CAMPUS",
+                    LatestAssetState.metric == k
+                ).first()
+                if latest:
+                    latest.value = float(v)
+                    latest.updated_at = now
+                else:
+                    db.add(LatestAssetState(
+                        asset_id="CAMPUS",
+                        metric=k,
+                        value=float(v),
+                        unit="",
+                        updated_at=now
+                    ))
+                ingested_count += 1
+
+    if "public_grievances" in payload:
+        for g in payload["public_grievances"]:
+            c_id = g.get("Grievance_Registration_Number", f"CPGRAMS-{uuid.uuid4().hex[:6]}")
+            exists = db.query(Complaint).filter(Complaint.id == c_id).first()
+            if not exists:
+                db.add(Complaint(
+                    id=c_id,
+                    ticket_number=c_id,
+                    category=g.get("Category", "General water issue"),
+                    sub_category=g.get("Sub_Category_Description", ""),
+                    building_id=g.get("Affected_Building", "CAMPUS"),
+                    priority=g.get("Priority", "Medium"),
+                    status="under_investigation",
+                    description=g.get("Sub_Category_Description", ""),
+                    complainant_name=g.get("Complainant_Type", "Resident"),
+                    created_at=now
+                ))
+
+    db.commit()
+
+    LAPTOP_SOURCES_STATE[source_id]["latest_receipt_time"] = now_iso
+    LAPTOP_SOURCES_STATE[source_id]["reading_count"] += ingested_count or len(readings) or 1
+    LAPTOP_SOURCES_STATE[source_id]["data_quality_status"] = "healthy"
+    LAPTOP_SOURCES_STATE[source_id]["latest_payload"] = payload
+
+    orchestrator.emit_event(
+        "SOURCE_RECEIVED",
+        f"SRC-{source_id}",
+        f"Received {ingested_count} readings from {LAPTOP_SOURCES_STATE[source_id]['laptop_label']}.",
+        {"source_id": source_id, "reading_count": ingested_count}
+    )
+
+    return {
+        "status": "success",
+        "source_id": source_id,
+        "ingested_count": ingested_count,
+        "received_at": now_iso
+    }
+
+@app.get("/api/v1/sources/status")
+def get_sources_status():
+    now = datetime.now(timezone.utc)
+    results = []
+    for sid, s in LAPTOP_SOURCES_STATE.items():
+        is_stale = True
+        status_label = s["data_quality_status"]
+        if s["latest_receipt_time"]:
+            try:
+                dt = datetime.fromisoformat(s["latest_receipt_time"].replace("Z", "+00:00"))
+                age = (now - dt).total_seconds()
+                is_stale = age > 60.0
+                if is_stale:
+                    status_label = "stale"
+            except Exception:
+                pass
+        results.append({
+            "source_id": s["source_id"],
+            "name": s["name"],
+            "laptop_label": s["laptop_label"],
+            "subsystem_type": s["subsystem_type"],
+            "latest_receipt_time": s["latest_receipt_time"],
+            "reading_count": s["reading_count"],
+            "data_quality_status": status_label,
+            "is_stale": is_stale,
+            "demonstration_label": s["demonstration_label"]
+        })
+    return results
+
+@app.post("/api/v1/agent/run-analysis")
+def run_agent_analysis(db: Session = Depends(get_db)):
+    """
+    Executes real-time multi-agent water operations analysis against latest persisted telemetry.
+    Streams execution lifecycle events and returns evidence-grounded result.
+    """
+    now = datetime.now(timezone.utc)
+    run_id = f"RUN-{int(time.time())}"
+
+    states = db.query(LatestAssetState).all()
+    block_meters = {}
+    pressures = {}
+    tanks = {}
+
+    for s in states:
+        if s.metric == "flow_lpm":
+            block_meters[s.asset_id] = s.value
+        elif s.metric == "pressure_bar":
+            pressures[s.asset_id] = s.value
+        elif s.metric == "volume_kl":
+            tanks[s.asset_id] = {"current_kl": s.value, "capacity_kl": 500.0, "safety_level_kl": 100.0}
+
+    detailed_readings = {}
+    s2_payload = LAPTOP_SOURCES_STATE["source_2"].get("latest_payload")
+    if s2_payload and "readings" in s2_payload:
+        for r in s2_payload["readings"]:
+            aid = r.get("asset_id")
+            if aid:
+                detailed_readings[aid] = r
+
+    complaints_records = db.query(Complaint).filter(Complaint.status != "resolved").all()
+    complaints_list = [
+        {
+            "id": c.id,
+            "block": c.building_id,
+            "Affected_Building": c.building_id,
+            "Priority": c.priority,
+            "priority": c.priority,
+            "text": c.description,
+            "Sub_Category_Description": c.description
+        }
+        for c in complaints_records
+    ]
+
+    snapshot = {
+        "tick": int(time.time()) % 1000,
+        "hour": (datetime.now().hour + datetime.now().minute / 60.0),
+        "is_weekend": datetime.now().weekday() >= 5,
+        "timestamp": now.isoformat(),
+        "block_meters": block_meters or {
+            "BLK-HSTL-A": 58.4, "BLK-HSTL-B": 13.2, "BLK-HSTL-C": 15.1,
+            "BLK-MESS": 9.5, "BLK-ACAD-1": 18.0, "BLK-LIB": 4.5
+        },
+        "pressures": pressures or {
+            "PIPE-OHT1-HSTLA": 2.3, "PIPE-SUMP-OHT1": 3.35, "PIPE-OHT1-HSTLB": 2.85
+        },
+        "tanks": tanks or {
+            "SUMP-CENTRAL": {"current_kl": 382.5, "capacity_kl": 500.0, "safety_level_kl": 100.0},
+            "OHT-NORTH": {"current_kl": 89.5, "capacity_kl": 120.0, "safety_level_kl": 25.0, "tank_level_pct": 74.5}
+        },
+        "detailed_readings": detailed_readings,
+        "complaints": complaints_list,
+        "total_inflow_lpm": 523.1,
+        "total_consumption_lpm": 395.0,
+        "total_stored_kl": 472.0
+    }
+
+    result = orchestrator.execute_evidence_based_analysis(snapshot, run_id=run_id)
+    return result
+
+@app.get("/api/v1/agent/latest-analysis")
+def get_latest_agent_analysis():
+    if not orchestrator.latest_analysis_result:
+        return {"status": "none", "message": "No agent analysis executed yet. Click 'Run Agent Analysis'."}
+    return orchestrator.latest_analysis_result
+
+@app.get("/api/v1/agent/stream-events")
+async def stream_agent_events(request: Request):
+    """Server-Sent Events endpoint streaming real-time operational agent execution events."""
+    async def event_generator():
+        last_idx = max(0, len(orchestrator.live_event_stream) - 15)
+        while True:
+            if await request.is_disconnected():
+                break
+            if len(orchestrator.live_event_stream) > last_idx:
+                new_events = orchestrator.live_event_stream[last_idx:]
+                last_idx = len(orchestrator.live_event_stream)
+                for evt in new_events:
+                    yield f"data: {json.dumps(evt)}\n\n"
+            await asyncio.sleep(0.5)
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
 
 # 2. Assets & Campus Hierarchy
 @app.get("/api/v1/assets")
@@ -333,8 +722,20 @@ def get_plans(db: Session = Depends(get_db)):
 
 # 5. Workforce & Work Orders
 @app.get("/api/v1/work-orders")
-def get_work_orders(db: Session = Depends(get_db)):
-    wos = db.query(WorkOrder).all()
+def get_work_orders(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    if user.role == "student":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Forbidden: Students do not have access to maintenance work orders."
+        )
+
+    query = db.query(WorkOrder)
+    if user.role == "engineer" and user.assigned_engineer_id:
+        query = query.filter((WorkOrder.assigned_engineer_id == user.assigned_engineer_id) | (WorkOrder.assigned_engineer_id == None))
+    elif user.role == "building_admin" and user.assigned_building_id:
+        query = query.filter(WorkOrder.asset_id == user.assigned_building_id)
+
+    wos = query.all()
     return [
         {
             "id": w.id,
@@ -343,8 +744,10 @@ def get_work_orders(db: Session = Depends(get_db)):
             "engineer_id": w.assigned_engineer_id,
             "priority": w.priority,
             "action": w.recommended_action,
+            "expected_impact": w.expected_impact,
             "status": w.status,
-            "findings": w.findings
+            "findings": w.findings,
+            "created_at": w.created_at.isoformat() if w.created_at else None
         }
         for w in wos
     ]
@@ -384,6 +787,581 @@ def complete_work_order(id: str, req: CompleteWorkOrderRequest, db: Session = De
     wo.completed_at = datetime.utcnow()
     db.commit()
     return {"status": "completed", "work_order_id": wo.id, "message": "Work order marked completed. Awaiting verifier outcome check."}
+
+@app.patch("/api/v1/work-orders/{id}/status")
+def update_work_order_status(
+    id: str,
+    req: WorkOrderStatusRequest,
+    user: User = Depends(require_roles("engineer", "admin")),
+    db: Session = Depends(get_db)
+):
+    wo = db.query(WorkOrder).filter(WorkOrder.id == id).first()
+    if not wo:
+        raise HTTPException(status_code=404, detail="Work order not found")
+
+    wo.status = req.status
+    if req.findings:
+        wo.findings = req.findings
+    if req.status == "completed":
+        wo.completed_at = datetime.utcnow()
+    db.commit()
+
+    return {
+        "status": wo.status,
+        "work_order_id": wo.id,
+        "findings": wo.findings,
+        "message": "Status updated. Outcome verification pending automatic telemetry check."
+    }
+
+# ===================== USER & RBAC ENDPOINTS =====================
+@app.get("/api/v1/users/me")
+def get_user_me(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    perms = ROLE_PERMISSIONS.get(user.role, [])
+    bld_assignments = db.query(UserBuildingAssignment).filter(UserBuildingAssignment.user_id == user.id).all()
+    assigned_buildings = [b.building_id for b in bld_assignments]
+    if user.assigned_building_id and user.assigned_building_id not in assigned_buildings:
+        assigned_buildings.append(user.assigned_building_id)
+
+    return {
+        "id": user.id,
+        "email": user.email,
+        "full_name": user.full_name,
+        "role": user.role,
+        "assigned_building_id": user.assigned_building_id,
+        "assigned_engineer_id": user.assigned_engineer_id,
+        "assigned_buildings": assigned_buildings,
+        "permissions": perms
+    }
+
+@app.get("/api/v1/users/me/permissions")
+def get_user_permissions(user: User = Depends(get_current_user)):
+    return {
+        "role": user.role,
+        "permissions": ROLE_PERMISSIONS.get(user.role, [])
+    }
+
+@app.get("/api/v1/users/me/buildings")
+def get_user_buildings(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    if user.role == "admin":
+        blds = db.query(Asset).filter(Asset.kind == "building").all()
+        return [{"id": b.id, "name": b.name, "population": b.population, "vulnerable": b.vulnerable} for b in blds]
+
+    bld_assignments = db.query(UserBuildingAssignment).filter(UserBuildingAssignment.user_id == user.id).all()
+    bld_ids = [b.building_id for b in bld_assignments]
+    if user.assigned_building_id and user.assigned_building_id not in bld_ids:
+        bld_ids.append(user.assigned_building_id)
+
+    blds = db.query(Asset).filter(Asset.id.in_(bld_ids)).all()
+    return [{"id": b.id, "name": b.name, "population": b.population, "vulnerable": b.vulnerable} for b in blds]
+
+# ===================== WATER-AWARENESS ENDPOINTS =====================
+@app.get("/api/v1/awareness/overview")
+def get_awareness_overview(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """
+    Campus-wide public water health overview (Safe for Student & Public consumption).
+    Hides internal SCADA valve commands and raw pipe burst topologies.
+    """
+    snap = simulator.step()
+    res_vol = snap.get("reservoir_volume_kl", 400.0)
+    res_max = snap.get("reservoir_capacity_kl", 500.0)
+    pct = round((res_vol / max(1.0, res_max)) * 100.0, 1)
+
+    campus_demand_lpm = snap.get("total_demand_lpm", 280.0)
+    stress_level = "normal"
+    if pct < 35.0 or campus_demand_lpm > 380.0:
+        stress_level = "elevated"
+    if pct < 20.0:
+        stress_level = "critical"
+
+    return {
+        "status": "active",
+        "campus_storage_pct": pct,
+        "campus_water_stress": stress_level,
+        "daily_target_liters_per_capita": 135.0,
+        "conservation_tip": "Turn off taps during lathering. Immediate reporting of leaks saves up to 4,000 liters daily.",
+        "active_campus_notices": [
+            "Routine overhead tank cleaning scheduled for Academic Complex this Saturday.",
+            "Water supply operating under smart pressure balancing protocol."
+        ]
+    }
+
+@app.get("/api/v1/awareness/buildings/{building_id}")
+def get_building_awareness(
+    building_id: str,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    if user.role in ["student", "building_admin"]:
+        if user.assigned_building_id and user.assigned_building_id != building_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Access denied: Role '{user.role}' is restricted to assigned building '{user.assigned_building_id}'."
+            )
+
+    asset = db.query(Asset).filter(Asset.id == building_id).first()
+    if not asset:
+        raise HTTPException(status_code=404, detail=f"Building '{building_id}' not found.")
+
+    snap = simulator.step()
+    bm = snap.get("block_meters", {}).get(building_id, 45.0)
+    curr_flow_lpm = float(bm) if isinstance(bm, (int, float)) else float(bm.get("flow_lpm", 45.0))
+
+    baselines = {
+        "BLK-HSTL-A": 48.0,
+        "BLK-HSTL-B": 42.0,
+        "BLK-HSTL-C": 54.0,
+        "BLK-MESS": 38.0,
+        "BLK-HLTH": 10.0,
+        "BLK-ACAD-1": 22.0,
+        "BLK-ACAD-2": 20.0,
+        "BLK-LIB": 8.0,
+    }
+    exp_flow_lpm = baselines.get(building_id, 30.0)
+    dev_pct = round(((curr_flow_lpm - exp_flow_lpm) / max(1.0, exp_flow_lpm)) * 100.0, 1)
+
+    incidents = db.query(Incident).filter(
+        Incident.location == building_id,
+        Incident.status.in_(["open", "investigating", "pending_approval", "in_progress"])
+    ).all()
+
+    cap_kl = float(asset.capacity_kl) if asset.capacity_kl is not None else 50.0
+    hours_autonomy = round((cap_kl * 1000.0) / max(1.0, (curr_flow_lpm * 60.0)), 1)
+    status_summary = "Normal Supply"
+    if dev_pct > 30.0:
+        status_summary = "Elevated Consumption (Inspection Requested)"
+    if any(i.case_type == "burst_main" for i in incidents):
+        status_summary = "Restricted (Maintenance in Progress)"
+
+    return {
+        "building_id": asset.id,
+        "building_name": asset.name,
+        "population": asset.population,
+        "is_vulnerable": asset.vulnerable,
+        "q1_supply_status": status_summary,
+        "q2_consumption_lpm": curr_flow_lpm,
+        "q2_baseline_lpm": exp_flow_lpm,
+        "q2_deviation_pct": dev_pct,
+        "q3_minimum_night_flow_status": "normal" if dev_pct < 25.0 else "anomalous_flow_detected",
+        "q4_active_alerts_count": len(incidents),
+        "q5_hours_autonomy": min(48.0, hours_autonomy),
+        "q6_conservation_guidance": "Report any wet riser dampness or dripping washroom faucets to keep campus water-secure.",
+        "q7_recent_notices": [
+            f"Building smart flow meter {building_id} telemetry active.",
+            f"Nominal allocation: {asset.nominal_demand_kl} kL/day."
+        ]
+    }
+
+@app.get("/api/v1/awareness/buildings/{building_id}/consumption")
+def get_building_consumption_history(
+    building_id: str,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    if user.role in ["student", "building_admin"]:
+        if user.assigned_building_id and user.assigned_building_id != building_id:
+            raise HTTPException(status_code=403, detail="Access denied to other building consumption.")
+
+    hours = [f"{h:02d}:00" for h in range(24)]
+    base_curve = [15, 12, 10, 8, 9, 22, 55, 68, 62, 50, 44, 46, 52, 48, 42, 40, 48, 65, 70, 60, 48, 35, 25, 18]
+    series = []
+    for h_label, val in zip(hours, base_curve):
+        series.append({
+            "hour": h_label,
+            "consumption_lpm": val,
+            "baseline_lpm": val,
+            "normal_band_upper": round(val * 1.2, 1),
+            "normal_band_lower": round(val * 0.8, 1)
+        })
+    return {"building_id": building_id, "interval": "hourly", "readings": series}
+
+@app.get("/api/v1/awareness/buildings/{building_id}/alerts")
+def get_building_alerts(
+    building_id: str,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    if user.role in ["student", "building_admin"]:
+        if user.assigned_building_id and user.assigned_building_id != building_id:
+            raise HTTPException(status_code=403, detail="Access denied to other building alerts.")
+
+    incidents = db.query(Incident).filter(
+        Incident.location == building_id,
+        Incident.status.in_(["open", "investigating", "pending_approval", "in_progress"])
+    ).all()
+    return [
+        {
+            "id": inc.id,
+            "type": inc.case_type,
+            "severity": "high" if inc.priority_score > 50 else "medium",
+            "message": f"Active {inc.case_type.replace('_', ' ')} incident recorded.",
+            "status": inc.status,
+            "created_at": inc.created_at.isoformat() if inc.created_at else None
+        }
+        for inc in incidents
+    ]
+
+# ===================== CPGRAMS COMPLAINTS & GRIEVANCES =====================
+@app.post("/api/v1/complaints", status_code=status.HTTP_201_CREATED)
+def submit_complaint(
+    req: ComplaintCreateRequest,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    tracking_num = f"CPGRAMS/2026/NEER-{random.randint(10000, 99999)}"
+    cid = f"CMP-{uuid.uuid4().hex[:8].upper()}"
+
+    target_bld = req.building_id
+    if user.role == "student" and user.assigned_building_id:
+        target_bld = user.assigned_building_id
+
+    comp = Complaint(
+        id=cid,
+        tracking_id=tracking_num,
+        user_id=user.id,
+        building_id=target_bld,
+        category=req.category,
+        description=req.description,
+        status="submitted",
+        priority=req.priority or "medium",
+        action_taken_remarks="Grievance logged via Central Water Resilience Portal"
+    )
+    db.add(comp)
+
+    history = ComplaintStatusHistory(
+        id=f"CSH-{uuid.uuid4().hex[:8]}",
+        complaint_id=cid,
+        status="submitted",
+        notes=f"Initial complaint submitted by {user.full_name} ({user.role})",
+        changed_by=user.full_name,
+        timestamp=datetime.utcnow()
+    )
+    db.add(history)
+    db.commit()
+
+    return {
+        "id": comp.id,
+        "tracking_id": comp.tracking_id,
+        "building_id": comp.building_id,
+        "status": comp.status,
+        "message": f"Complaint successfully registered. Your official tracking ID is {tracking_num}."
+    }
+
+@app.get("/api/v1/complaints")
+def list_complaints(
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    query = db.query(Complaint)
+    if user.role == "student":
+        query = query.filter(Complaint.user_id == user.id)
+    elif user.role == "building_admin":
+        if user.assigned_building_id:
+            query = query.filter(Complaint.building_id == user.assigned_building_id)
+    elif user.role == "engineer":
+        if user.assigned_building_id:
+            query = query.filter((Complaint.assigned_work_order_id != None) | (Complaint.building_id == user.assigned_building_id))
+
+    complaints = query.order_by(Complaint.created_at.desc()).all()
+    return [
+        {
+            "id": c.id,
+            "tracking_id": c.tracking_id,
+            "user_id": c.user_id,
+            "building_id": c.building_id,
+            "category": c.category,
+            "description": c.description,
+            "status": c.status,
+            "priority": c.priority,
+            "assigned_work_order_id": c.assigned_work_order_id,
+            "action_taken_remarks": c.action_taken_remarks,
+            "created_at": c.created_at.isoformat() if c.created_at else None,
+            "updated_at": c.updated_at.isoformat() if c.updated_at else None
+        }
+        for c in complaints
+    ]
+
+@app.get("/api/v1/complaints/{complaint_id}")
+def get_complaint(
+    complaint_id: str,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    comp = db.query(Complaint).filter(Complaint.id == complaint_id).first()
+    if not comp:
+        raise HTTPException(status_code=404, detail="Complaint not found")
+
+    if user.role == "student" and comp.user_id != user.id:
+        raise HTTPException(status_code=403, detail="Forbidden: You can only view your own complaints.")
+    if user.role == "building_admin" and user.assigned_building_id and comp.building_id != user.assigned_building_id:
+        raise HTTPException(status_code=403, detail="Forbidden: Complaint belongs to another building.")
+
+    history = db.query(ComplaintStatusHistory).filter(ComplaintStatusHistory.complaint_id == complaint_id).order_by(ComplaintStatusHistory.timestamp.asc()).all()
+
+    return {
+        "complaint": {
+            "id": comp.id,
+            "tracking_id": comp.tracking_id,
+            "building_id": comp.building_id,
+            "category": comp.category,
+            "description": comp.description,
+            "status": comp.status,
+            "priority": comp.priority,
+            "assigned_work_order_id": comp.assigned_work_order_id,
+            "action_taken_remarks": comp.action_taken_remarks,
+            "created_at": comp.created_at.isoformat() if comp.created_at else None
+        },
+        "history": [
+            {
+                "id": h.id,
+                "status": h.status,
+                "notes": h.notes,
+                "changed_by": h.changed_by,
+                "timestamp": h.timestamp.isoformat() if h.timestamp else None
+            }
+            for h in history
+        ]
+    }
+
+@app.patch("/api/v1/complaints/{complaint_id}")
+def update_complaint(
+    complaint_id: str,
+    req: ComplaintUpdateRequest,
+    user: User = Depends(require_roles("admin", "building_admin")),
+    db: Session = Depends(get_db)
+):
+    comp = db.query(Complaint).filter(Complaint.id == complaint_id).first()
+    if not comp:
+        raise HTTPException(status_code=404, detail="Complaint not found")
+
+    if user.role == "building_admin" and user.assigned_building_id and comp.building_id != user.assigned_building_id:
+        raise HTTPException(status_code=403, detail="Forbidden: Cannot update complaints from another building.")
+
+    if req.forward_to_maintenance:
+        wo_id = f"WO-CMP-{comp.id[-4:]}"
+        wo = WorkOrder(
+            id=wo_id,
+            incident_id=None,
+            asset_id=comp.building_id,
+            assigned_engineer_id=user.assigned_engineer_id or "ENG-02",
+            required_skill="plumbing",
+            priority=comp.priority or "medium",
+            recommended_action=f"Inspect and address complaint: {comp.description}",
+            expected_impact="Restore plumbing service and eliminate localized leakage.",
+            status="assigned"
+        )
+        db.merge(wo)
+        comp.assigned_work_order_id = wo_id
+        comp.status = "in_progress"
+        comp.action_taken_remarks = f"Forwarded to maintenance work order {wo_id}."
+
+    if req.status:
+        comp.status = req.status
+    if req.action_taken_remarks:
+        comp.action_taken_remarks = req.action_taken_remarks
+    comp.updated_at = datetime.utcnow()
+
+    history = ComplaintStatusHistory(
+        id=f"CSH-{uuid.uuid4().hex[:8]}",
+        complaint_id=comp.id,
+        status=comp.status,
+        notes=req.action_taken_remarks or f"Status changed to {comp.status} by {user.full_name}",
+        changed_by=user.full_name,
+        timestamp=datetime.utcnow()
+    )
+    db.add(history)
+    db.commit()
+
+    return {"status": comp.status, "complaint_id": comp.id, "work_order_id": comp.assigned_work_order_id}
+
+@app.get("/api/v1/complaints/{complaint_id}/history")
+def get_complaint_history(
+    complaint_id: str,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    comp = db.query(Complaint).filter(Complaint.id == complaint_id).first()
+    if not comp:
+        raise HTTPException(status_code=404, detail="Complaint not found")
+    if user.role == "student" and comp.user_id != user.id:
+        raise HTTPException(status_code=403, detail="Forbidden.")
+
+    history = db.query(ComplaintStatusHistory).filter(ComplaintStatusHistory.complaint_id == complaint_id).order_by(ComplaintStatusHistory.timestamp.asc()).all()
+    return [
+        {
+            "id": h.id,
+            "status": h.status,
+            "notes": h.notes,
+            "changed_by": h.changed_by,
+            "timestamp": h.timestamp.isoformat() if h.timestamp else None
+        }
+        for h in history
+    ]
+
+# ===================== GIS MAP ASSET ENDPOINTS =====================
+@app.get("/api/v1/map/assets")
+def get_map_assets(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Returns role-filtered GIS map assets. Students only see public campus buildings."""
+    if user.role == "student":
+        assets = db.query(Asset).filter(Asset.kind == "building").all()
+    else:
+        assets = db.query(Asset).all()
+
+    return [
+        {
+            "id": a.id,
+            "name": a.name,
+            "kind": a.kind,
+            "type": a.asset_type,
+            "vulnerable": a.vulnerable,
+            "population": a.population,
+            "capacity_kl": a.capacity_kl
+        }
+        for a in assets
+    ]
+
+@app.get("/api/v1/map/assets/{asset_id}/summary")
+def get_map_asset_summary(asset_id: str, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    asset = db.query(Asset).filter(Asset.id == asset_id).first()
+    if not asset:
+        raise HTTPException(status_code=404, detail="Asset not found")
+    states = db.query(LatestAssetState).filter(LatestAssetState.asset_id == asset_id).all()
+    incidents = db.query(Incident).filter(Incident.location == asset_id, Incident.status.in_(["open", "investigating", "pending_approval", "in_progress"])).all()
+
+    return {
+        "asset": {
+            "id": asset.id,
+            "name": asset.name,
+            "kind": asset.kind,
+            "vulnerable": asset.vulnerable,
+            "population": asset.population,
+            "capacity_kl": asset.capacity_kl
+        },
+        "readings": [{s.metric: s.value, "unit": s.unit} for s in states],
+        "active_incidents": len(incidents)
+    }
+
+@app.get("/api/v1/map/assets/{asset_id}/alerts")
+def get_map_asset_alerts(asset_id: str, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    incidents = db.query(Incident).filter(Incident.location == asset_id).all()
+    return [
+        {
+            "id": inc.id,
+            "type": inc.case_type,
+            "status": inc.status,
+            "priority": inc.priority_score,
+            "why": inc.why_text
+        }
+        for inc in incidents
+    ]
+
+@app.get("/api/v1/map/assets/{asset_id}/consumption")
+def get_map_asset_consumption(asset_id: str, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    states = db.query(LatestAssetState).filter(LatestAssetState.asset_id == asset_id, LatestAssetState.metric == "flow_lpm").first()
+    val = states.value if states else 45.0
+    return {
+        "asset_id": asset_id,
+        "current_flow_lpm": val,
+        "historical_avg_lpm": 48.0,
+        "status": "normal" if val < 60.0 else "elevated"
+    }
+
+# ===================== GEMINI TOKEN ACCOUNTING (ADMIN ONLY) =====================
+@app.get("/api/v1/admin/gemini/usage")
+def get_gemini_usage_summary(user: User = Depends(require_roles("admin")), db: Session = Depends(get_db)):
+    usages = db.query(AgentTokenUsage).all()
+    tot_reqs = sum(u.total_requests for u in usages)
+    tot_inp = sum(u.total_input_tokens for u in usages)
+    tot_out = sum(u.total_output_tokens for u in usages)
+    tot_thk = sum(u.total_thinking_tokens for u in usages)
+    tot_tok = sum(u.total_tokens for u in usages)
+    tot_cost = sum(u.total_cost_usd for u in usages)
+
+    cfg = db.query(ModelPricingConfig).filter(ModelPricingConfig.is_active == True).first()
+
+    return {
+        "model": "gemini-3.5-flash-lite",
+        "pricing_tier": "standard_paid",
+        "input_price_per_million": cfg.input_price_per_million if cfg else 0.30,
+        "output_price_per_million": cfg.output_price_per_million if cfg else 2.50,
+        "total_requests": tot_reqs,
+        "total_input_tokens": tot_inp,
+        "total_output_tokens": tot_out,
+        "total_thinking_tokens": tot_thk,
+        "total_tokens": tot_tok,
+        "total_cost_usd": round(tot_cost, 6),
+        "total_cost_inr": round(tot_cost * 86.5, 4),
+        "is_available": gemini_client.is_available()
+    }
+
+@app.get("/api/v1/admin/gemini/usage/agents")
+def get_gemini_usage_agents(user: User = Depends(require_roles("admin")), db: Session = Depends(get_db)):
+    usages = db.query(AgentTokenUsage).all()
+    return [
+        {
+            "agent_name": u.agent_name,
+            "total_requests": u.total_requests,
+            "input_tokens": u.total_input_tokens,
+            "output_tokens": u.total_output_tokens,
+            "thinking_tokens": u.total_thinking_tokens,
+            "total_tokens": u.total_tokens,
+            "cost_usd": round(u.total_cost_usd, 6),
+            "model": "gemini-3.5-flash-lite"
+        }
+        for u in usages
+    ]
+
+@app.get("/api/v1/admin/gemini/usage/requests")
+def get_gemini_requests_log(user: User = Depends(require_roles("admin")), db: Session = Depends(get_db)):
+    reqs = db.query(GeminiRequest).order_by(GeminiRequest.created_at.desc()).limit(50).all()
+    return [
+        {
+            "id": r.id,
+            "request_id": r.request_id,
+            "agent_name": r.agent_name,
+            "model": r.model,
+            "latency_ms": round(r.latency_ms, 1),
+            "input_tokens": r.input_tokens,
+            "output_tokens": r.output_tokens,
+            "thinking_tokens": r.thinking_tokens,
+            "total_tokens": r.total_tokens,
+            "cost_usd": round(r.estimated_cost_usd, 6),
+            "status": r.status,
+            "created_at": r.created_at.isoformat() if r.created_at else None
+        }
+        for r in reqs
+    ]
+
+@app.get("/api/v1/admin/gemini/pricing")
+def get_pricing_config(user: User = Depends(require_roles("admin")), db: Session = Depends(get_db)):
+    cfg = db.query(ModelPricingConfig).filter(ModelPricingConfig.is_active == True).first()
+    return {
+        "model_name": cfg.model_name if cfg else "gemini-3.5-flash-lite",
+        "input_price_per_million": cfg.input_price_per_million if cfg else 0.30,
+        "output_price_per_million": cfg.output_price_per_million if cfg else 2.50,
+        "pricing_tier": cfg.pricing_tier if cfg else "standard_paid",
+        "version": cfg.version if cfg else "2026-v1"
+    }
+
+@app.post("/api/v1/admin/gemini/pricing")
+def update_pricing_config(req: PricingUpdateRequest, user: User = Depends(require_roles("admin")), db: Session = Depends(get_db)):
+    cfg = db.query(ModelPricingConfig).filter(ModelPricingConfig.is_active == True).first()
+    if not cfg:
+        cfg = ModelPricingConfig(
+            id="CFG-CUSTOM",
+            model_name="gemini-3.5-flash-lite",
+            input_price_per_million=req.input_price_per_million,
+            output_price_per_million=req.output_price_per_million,
+            pricing_tier="custom",
+            version="custom-v1",
+            is_active=True
+        )
+        db.add(cfg)
+    else:
+        cfg.input_price_per_million = req.input_price_per_million
+        cfg.output_price_per_million = req.output_price_per_million
+        cfg.updated_at = datetime.utcnow()
+    db.commit()
+    return {"status": "updated", "input_price": cfg.input_price_per_million, "output_price": cfg.output_price_per_million}
 
 # 6. Human Control & Approvals
 @app.get("/api/v1/approvals")
@@ -473,10 +1451,10 @@ def get_audit_log(format: Optional[str] = "json", db: Session = Depends(get_db))
         for r in records
     ]
 
-# 8. Agent Traces
+# 8. Agent Traces (Technical - Admin Only)
 @app.get("/api/v1/traces")
 @app.get("/api/traces")
-def get_agent_traces():
+def get_agent_traces(user: User = Depends(require_roles("admin"))):
     traces = orchestrator.historical_traces[-30:]
     return [t.dict() for t in traces]
 

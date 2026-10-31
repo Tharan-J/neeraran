@@ -8,6 +8,7 @@ const API_BASE = '/api';
 
 export async function apiFetch<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const role = sessionStorage.getItem('neeraran_role') || 'admin';
+  const userId = sessionStorage.getItem('neeraran_user_id') || 'USER-ADMIN-01';
   const isDemoSafe = sessionStorage.getItem('neeraran_demo_safe') === 'true';
 
   if (isDemoSafe && endpoint.startsWith('/v1/evaluation')) {
@@ -24,6 +25,7 @@ export async function apiFetch<T>(endpoint: string, options: RequestInit = {}): 
   const headers = {
     'Content-Type': 'application/json',
     'X-User-Role': role,
+    'X-User-ID': userId,
     ...(options.headers || {}),
   };
 
