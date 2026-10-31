@@ -5,8 +5,8 @@
   "description": "NEERARAN: Enterprise AI Water Resilience and Smart Resource Management Platform",
   "scripts": {
     "dev": "concurrently -k -p \"[{name}]\" -n \"API,WEB\" -c \"cyan.bold,blue.bold\" \"npm run dev:api\" \"npm run dev:web\"",
-    "dev:api": "cd apps/api && python3 -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload",
-    "dev:web": "cd apps/web && npm run dev",
+    "dev:api": "PYTHONPATH=. python3 -m uvicorn apps.api.main:app --host 0.0.0.0 --port 8000 --reload",
+    "dev:web": "npm run dev --prefix apps/web",
     "build": "cd apps/web && npm run build",
     "test:api": "pytest tests/",
     "source1": "python3 apps/api/sim/sources.py --source 1",
