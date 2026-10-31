@@ -1,0 +1,20 @@
+{
+  "name": "neeraran-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "NEERARAN: Enterprise AI Water Resilience and Smart Resource Management Platform",
+  "scripts": {
+    "dev": "concurrently -k -p \"[{name}]\" -n \"API,WEB\" -c \"cyan.bold,blue.bold\" \"npm run dev:api\" \"npm run dev:web\"",
+    "dev:api": "cd apps/api && python3 -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload",
+    "dev:web": "cd apps/web && npm run dev",
+    "build": "cd apps/web && npm run build",
+    "test:api": "pytest tests/",
+    "source1": "python3 apps/api/sim/sources.py --source 1",
+    "source2": "python3 apps/api/sim/sources.py --source 2",
+    "source3": "python3 apps/api/sim/sources.py --source 3",
+    "source4": "python3 apps/api/sim/sources.py --source 4"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

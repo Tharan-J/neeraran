@@ -1,0 +1,112 @@
+/* Google Fonts for Onest, Anek Tamil, and JetBrains Mono */
+@import url('https://fonts.googleapis.com/css2?family=Anek+Tamil:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Onest:wght@300;400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Core NEERARAN Palette */
+  --color-sky-50: #EAF3FD;
+  --color-sky-100: #D9E9FB;
+  --color-sky-300: #8FC0EE;
+  --color-sky-500: #3A8FDA;
+  --color-sky-700: #1E5FA8;
+  --color-ink-900: #0F2236;
+  --color-ink-600: #4A5F75;
+  --color-mist: #F2F6FA;
+  
+  /* Status Semantics */
+  --color-aqua: #2FB8AA;   /* normal */
+  --color-leaf: #4CBF86;   /* good / optimal */
+  --color-amber: #F2A33A;  /* watch / warning */
+  --color-coral: #E5594F;  /* leak / critical */
+
+  /* Surface & Glass */
+  --color-background: #F4F8FC;
+  --glass-bg: rgba(255, 255, 255, 0.65);
+  --glass-border: rgba(255, 255, 255, 0.85);
+  --glass-card-bg: rgba(255, 255, 255, 0.72);
+}
+
+.dark {
+  /* Night Ops Dark Mode Tokens */
+  --color-sky-50: #132437;
+  --color-sky-100: #1C334E;
+  --color-sky-300: #62A4E0;
+  --color-sky-500: #3A8FDA;
+  --color-sky-700: #8FC0EE;
+  --color-ink-900: #F2F6FA;
+  --color-ink-600: #9EB2C7;
+  --color-mist: #0B1622;
+  
+  /* Surfaces */
+  --color-background: #0B1622;
+  --glass-bg: rgba(20, 36, 54, 0.75);
+  --glass-border: rgba(255, 255, 255, 0.12);
+  --glass-card-bg: rgba(18, 32, 48, 0.82);
+}
+
+body {
+  font-family: 'Onest', sans-serif;
+  background-color: var(--color-background);
+  color: var(--color-ink-900);
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Glassmorphism utility classes */
+.glass-panel {
+  background: var(--glass-bg);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border: 1px solid var(--glass-border);
+}
+
+.glass-card {
+  background: var(--glass-card-bg);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border: 1px solid var(--glass-border);
+  border-radius: 22px;
+}
+
+/* Pulse animation for leak markers on GIS Map */
+@keyframes leak-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(229, 89, 79, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 14px rgba(229, 89, 79, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(229, 89, 79, 0);
+  }
+}
+
+.pulse-leak {
+  animation: leak-pulse 1.6s infinite;
+}
+
+/* Water fill effect for landing page 'நீர்' */
+@keyframes water-fill-anim {
+  0% {
+    background-position: 0% 100%;
+  }
+  50% {
+    background-position: 100% 0%;
+  }
+  100% {
+    background-position: 0% 0%;
+  }
+}
+
+.water-text-fill {
+  background: linear-gradient(0deg, #3A8FDA 0%, #3A8FDA 50%, #0F2236 50%, #0F2236 100%);
+  background-size: 100% 200%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: water-fill-anim 3.5s ease-in-out infinite alternate;
+}

@@ -1,0 +1,1474 @@
+{
+  "type": "FeatureCollection",
+  "metadata": {
+    "campus": "NEERARAN Synthetic Campus Twin",
+    "location": "Sathyamangalam, Tamil Nadu",
+    "base_coords": [
+      77.276,
+      11.4975
+    ],
+    "total_blocks": 20,
+    "total_pipes": 15
+  },
+  "features": [
+    {
+      "type": "Feature",
+      "id": "BLK-HSTL-A",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              77.2735,
+              11.4986
+            ],
+            [
+              77.2745,
+              11.4986
+            ],
+            [
+              77.2745,
+              11.499400000000001
+            ],
+            [
+              77.2735,
+              11.499400000000001
+            ],
+            [
+              77.2735,
+              11.4986
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "id": "BLK-HSTL-A",
+        "name": "Hostel Block A (Boys 1)",
+        "kind": "block",
+        "type": "hostel",
+        "population": 650,
+        "vulnerable": true,
+        "demand_kl_per_day": 85.0,
+        "status": "normal",
+        "center": [
+          77.274,
+          11.499
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "BLK-HSTL-B",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              77.2735,
+              11.4996
+            ],
+            [
+              77.2745,
+              11.4996
+            ],
+            [
+              77.2745,
+              11.5004
+            ],
+            [
+              77.2735,
+              11.5004
+            ],
+            [
+              77.2735,
+              11.4996
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "id": "BLK-HSTL-B",
+        "name": "Hostel Block B (Boys 2)",
+        "kind": "block",
+        "type": "hostel",
+        "population": 600,
+        "vulnerable": true,
+        "demand_kl_per_day": 78.0,
+        "status": "normal",
+        "center": [
+          77.274,
+          11.5
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "BLK-HSTL-C",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              77.27199999999999,
+              11.4991
+            ],
+            [
+              77.273,
+              11.4991
+            ],
+            [
+              77.273,
+              11.499900000000002
+            ],
+            [
+              77.27199999999999,
+              11.499900000000002
+            ],
+            [
+              77.27199999999999,
+              11.4991
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "id": "BLK-HSTL-C",
+        "name": "Hostel Block C (Girls)",
+        "kind": "block",
+        "type": "hostel",
+        "population": 750,
+        "vulnerable": true,
+        "demand_kl_per_day": 95.0,
+        "status": "normal",
+        "center": [
+          77.2725,
+          11.499500000000001
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "BLK-HLTH",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              77.274,
+              11.496599999999999
+            ],
+            [
+              77.275,
+              11.496599999999999
+            ],
+            [
+              77.275,
+              11.4974
+            ],
+            [
+              77.274,
+              11.4974
+            ],
+            [
+              77.274,
+              11.496599999999999
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "id": "BLK-HLTH",
+        "name": "Campus Health Centre",
+        "kind": "block",
+        "type": "health",
+        "population": 80,
+        "vulnerable": true,
+        "demand_kl_per_day": 15.0,
+        "status": "normal",
+        "center": [
+          77.2745,
+          11.497
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "BLK-CRECHE",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              77.27369999999999,
+              11.495899999999999
+            ],
+            [
+              77.2747,
+              11.495899999999999
+            ],
+            [
+              77.2747,
+              11.4967
+            ],
+            [
+              77.27369999999999,
+              11.4967
+            ],
+            [
+              77.27369999999999,
+              11.495899999999999
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "id": "BLK-CRECHE",
+        "name": "Staff Cr\u00e8che & Daycare",
+        "kind": "block",
+        "type": "cr\u00e8che",
+        "population": 45,
+        "vulnerable": true,
+        "demand_kl_per_day": 8.0,
+        "status": "normal",
+        "center": [
+          77.2742,
+          11.4963
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "BLK-MESS",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              77.27229999999999,
+              11.498099999999999
+            ],
+            [
+              77.27329999999999,
+              11.498099999999999
+            ],
+            [
+              77.27329999999999,
+              11.4989
+            ],
+            [
+              77.27229999999999,
+              11.4989
+            ],
+            [
+              77.27229999999999,
+              11.498099999999999
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "id": "BLK-MESS",
+        "name": "Central Mess & Kitchen",
+        "kind": "block",
+        "type": "mess",
+        "population": 2000,
+        "vulnerable": false,
+        "demand_kl_per_day": 60.0,
+        "status": "normal",
+        "center": [
+          77.27279999999999,
+          11.4985
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "BLK-ACAD-1",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              77.2765,
+              11.4956
+            ],
+            [
+              77.2775,
+              11.4956
+            ],
+            [
+              77.2775,
+              11.496400000000001
+            ],
+            [
+              77.2765,
+              11.496400000000001
+            ],
+            [
+              77.2765,
+              11.4956
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "id": "BLK-ACAD-1",
+        "name": "Academic Block 1 (CS/IT)",
+        "kind": "block",
+        "type": "academic",
+        "population": 1200,
+        "vulnerable": false,
+        "demand_kl_per_day": 35.0,
+        "status": "normal",
+        "center": [
+          77.277,
+          11.496
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "BLK-ACAD-2",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              77.27799999999999,
+              11.4956
+            ],
+            [
+              77.279,
+              11.4956
+            ],
+            [
+              77.279,
+              11.496400000000001
+            ],
+            [
+              77.27799999999999,
+              11.496400000000001
+            ],
+            [
+              77.27799999999999,
+              11.4956
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "id": "BLK-ACAD-2",
+        "name": "Academic Block 2 (Mech/Civil)",
+        "kind": "block",
+        "type": "academic",
+        "population": 1000,
+        "vulnerable": false,
+        "demand_kl_per_day": 32.0,
+        "status": "normal",
+        "center": [
+          77.2785,
+          11.496
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "BLK-ACAD-3",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              77.2773,
+              11.4969
+            ],
+            [
+              77.2783,
+              11.4969
+            ],
+            [
+              77.2783,
+              11.497700000000002
+            ],
+            [
+              77.2773,
+              11.497700000000002
+            ],
+            [
+              77.2773,
+              11.4969
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "id": "BLK-ACAD-3",
+        "name": "Academic Block 3 (EEE/ECE)",
+        "kind": "block",
+        "type": "academic",
+        "population": 1100,
+        "vulnerable": false,
+        "demand_kl_per_day": 34.0,
+        "status": "normal",
+        "center": [
+          77.2778,
+          11.497300000000001
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "BLK-ACAD-4",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              77.27699999999999,
+              11.498099999999999
+            ],
+            [
+              77.27799999999999,
+              11.498099999999999
+            ],
+            [
+              77.27799999999999,
+              11.4989
+            ],
+            [
+              77.27699999999999,
+              11.4989
+            ],
+            [
+              77.27699999999999,
+              11.498099999999999
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "id": "BLK-ACAD-4",
+        "name": "Academic Block 4 (Mgmt/Sci)",
+        "kind": "block",
+        "type": "academic",
+        "population": 900,
+        "vulnerable": false,
+        "demand_kl_per_day": 28.0,
+        "status": "normal",
+        "center": [
+          77.27749999999999,
+          11.4985
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "BLK-LIB",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              77.276,
+              11.4971
+            ],
+            [
+              77.277,
+              11.4971
+            ],
+            [
+              77.277,
+              11.497900000000001
+            ],
+            [
+              77.276,
+              11.497900000000001
+            ],
+            [
+              77.276,
+              11.4971
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "id": "BLK-LIB",
+        "name": "Central Library",
+        "kind": "block",
+        "type": "library",
+        "population": 400,
+        "vulnerable": false,
+        "demand_kl_per_day": 12.0,
+        "status": "normal",
+        "center": [
+          77.2765,
+          11.4975
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "BLK-BIOTECH",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              77.27749999999999,
+              11.4946
+            ],
+            [
+              77.2785,
+              11.4946
+            ],
+            [
+              77.2785,
+              11.495400000000002
+            ],
+            [
+              77.27749999999999,
+              11.495400000000002
+            ],
+            [
+              77.27749999999999,
+              11.4946
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "id": "BLK-BIOTECH",
+        "name": "Biotech Research Labs",
+        "kind": "block",
+        "type": "lab",
+        "population": 250,
+        "vulnerable": false,
+        "demand_kl_per_day": 25.0,
+        "status": "normal",
+        "center": [
+          77.27799999999999,
+          11.495000000000001
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "BLK-MECHLAB",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              77.2787,
+              11.494299999999999
+            ],
+            [
+              77.2797,
+              11.494299999999999
+            ],
+            [
+              77.2797,
+              11.4951
+            ],
+            [
+              77.2787,
+              11.4951
+            ],
+            [
+              77.2787,
+              11.494299999999999
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "id": "BLK-MECHLAB",
+        "name": "Heavy Mech Workshop",
+        "kind": "block",
+        "type": "workshop",
+        "population": 300,
+        "vulnerable": false,
+        "demand_kl_per_day": 22.0,
+        "status": "normal",
+        "center": [
+          77.2792,
+          11.4947
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "BLK-SPORTS",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              77.2765,
+              11.5001
+            ],
+            [
+              77.2775,
+              11.5001
+            ],
+            [
+              77.2775,
+              11.500900000000001
+            ],
+            [
+              77.2765,
+              11.500900000000001
+            ],
+            [
+              77.2765,
+              11.5001
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "id": "BLK-SPORTS",
+        "name": "Sports Complex & Pavilion",
+        "kind": "block",
+        "type": "sports",
+        "population": 500,
+        "vulnerable": false,
+        "demand_kl_per_day": 18.0,
+        "status": "normal",
+        "center": [
+          77.277,
+          11.5005
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "BLK-ADMIN",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              77.27499999999999,
+              11.4973
+            ],
+            [
+              77.276,
+              11.4973
+            ],
+            [
+              77.276,
+              11.4981
+            ],
+            [
+              77.27499999999999,
+              11.4981
+            ],
+            [
+              77.27499999999999,
+              11.4973
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "id": "BLK-ADMIN",
+        "name": "Administrative Building",
+        "kind": "block",
+        "type": "admin",
+        "population": 180,
+        "vulnerable": false,
+        "demand_kl_per_day": 10.0,
+        "status": "normal",
+        "center": [
+          77.2755,
+          11.4977
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "BLK-SAC",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              77.2757,
+              11.498899999999999
+            ],
+            [
+              77.2767,
+              11.498899999999999
+            ],
+            [
+              77.2767,
+              11.4997
+            ],
+            [
+              77.2757,
+              11.4997
+            ],
+            [
+              77.2757,
+              11.498899999999999
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "id": "BLK-SAC",
+        "name": "Student Activity Centre",
+        "kind": "block",
+        "type": "activity",
+        "population": 600,
+        "vulnerable": false,
+        "demand_kl_per_day": 16.0,
+        "status": "normal",
+        "center": [
+          77.2762,
+          11.4993
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "BLK-GUEST",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              77.27499999999999,
+              11.4953
+            ],
+            [
+              77.276,
+              11.4953
+            ],
+            [
+              77.276,
+              11.496100000000002
+            ],
+            [
+              77.27499999999999,
+              11.496100000000002
+            ],
+            [
+              77.27499999999999,
+              11.4953
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "id": "BLK-GUEST",
+        "name": "Guest House & Faculty Qtrs",
+        "kind": "block",
+        "type": "residence",
+        "population": 120,
+        "vulnerable": false,
+        "demand_kl_per_day": 20.0,
+        "status": "normal",
+        "center": [
+          77.2755,
+          11.495700000000001
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "BLK-STP",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              77.273,
+              11.4939
+            ],
+            [
+              77.274,
+              11.4939
+            ],
+            [
+              77.274,
+              11.494700000000002
+            ],
+            [
+              77.273,
+              11.494700000000002
+            ],
+            [
+              77.273,
+              11.4939
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "id": "BLK-STP",
+        "name": "STP & Water Recycling Unit",
+        "kind": "block",
+        "type": "utility",
+        "population": 50,
+        "vulnerable": false,
+        "demand_kl_per_day": 10.0,
+        "status": "normal",
+        "center": [
+          77.2735,
+          11.4943
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "BLK-LAUNDRY",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              77.2713,
+              11.4983
+            ],
+            [
+              77.2723,
+              11.4983
+            ],
+            [
+              77.2723,
+              11.499100000000002
+            ],
+            [
+              77.2713,
+              11.499100000000002
+            ],
+            [
+              77.2713,
+              11.4983
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "id": "BLK-LAUNDRY",
+        "name": "Central Campus Laundry",
+        "kind": "block",
+        "type": "utility",
+        "population": 100,
+        "vulnerable": false,
+        "demand_kl_per_day": 30.0,
+        "status": "normal",
+        "center": [
+          77.2718,
+          11.498700000000001
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "BLK-CAFE",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              77.274,
+              11.4976
+            ],
+            [
+              77.275,
+              11.4976
+            ],
+            [
+              77.275,
+              11.498400000000002
+            ],
+            [
+              77.274,
+              11.498400000000002
+            ],
+            [
+              77.274,
+              11.4976
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "id": "BLK-CAFE",
+        "name": "Campus Cafeteria & Food Court",
+        "kind": "block",
+        "type": "amenity",
+        "population": 800,
+        "vulnerable": false,
+        "demand_kl_per_day": 18.0,
+        "status": "normal",
+        "center": [
+          77.2745,
+          11.498000000000001
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "SUMP-CENTRAL",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          77.276,
+          11.4975
+        ]
+      },
+      "properties": {
+        "id": "SUMP-CENTRAL",
+        "name": "Central Ground Sump",
+        "kind": "sump",
+        "capacity_kl": 500.0,
+        "safety_level_kl": 100.0,
+        "current_level_kl": 380.0,
+        "status": "normal"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "OHT-NORTH",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          77.2738,
+          11.4993
+        ]
+      },
+      "properties": {
+        "id": "OHT-NORTH",
+        "name": "Overhead Tank 1 (North/Hostels)",
+        "kind": "tank",
+        "capacity_kl": 120.0,
+        "safety_level_kl": 30.0,
+        "current_level_kl": 91.2,
+        "status": "normal"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "OHT-SOUTH",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          77.27759999999999,
+          11.4963
+        ]
+      },
+      "properties": {
+        "id": "OHT-SOUTH",
+        "name": "Overhead Tank 2 (South/Academic)",
+        "kind": "tank",
+        "capacity_kl": 100.0,
+        "safety_level_kl": 25.0,
+        "current_level_kl": 76.0,
+        "status": "normal"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "OHT-EAST",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          77.27239999999999,
+          11.499
+        ]
+      },
+      "properties": {
+        "id": "OHT-EAST",
+        "name": "Overhead Tank 3 (East/Mess & C)",
+        "kind": "tank",
+        "capacity_kl": 140.0,
+        "safety_level_kl": 35.0,
+        "current_level_kl": 106.4,
+        "status": "normal"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "OHT-WEST",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          77.27499999999999,
+          11.4967
+        ]
+      },
+      "properties": {
+        "id": "OHT-WEST",
+        "name": "Overhead Tank 4 (West/Health & Admin)",
+        "kind": "tank",
+        "capacity_kl": 80.0,
+        "safety_level_kl": 20.0,
+        "current_level_kl": 60.8,
+        "status": "normal"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "BORE-01",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          77.27499999999999,
+          11.501000000000001
+        ]
+      },
+      "properties": {
+        "id": "BORE-01",
+        "name": "Deep Aquifer Borewell 1",
+        "kind": "borewell",
+        "design_rate_lpm": 120.0,
+        "status": "normal"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "BORE-02",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          77.277,
+          11.494
+        ]
+      },
+      "properties": {
+        "id": "BORE-02",
+        "name": "Deep Aquifer Borewell 2",
+        "kind": "borewell",
+        "design_rate_lpm": 95.0,
+        "status": "normal"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "INLET-MUNI",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          77.27199999999999,
+          11.493500000000001
+        ]
+      },
+      "properties": {
+        "id": "INLET-MUNI",
+        "name": "Municipal Cauvery Supply Inlet",
+        "kind": "inlet",
+        "design_rate_lpm": 450.0,
+        "status": "normal"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "PIPE-MUNI-SUMP",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            77.27199999999999,
+            11.493500000000001
+          ],
+          [
+            77.276,
+            11.4975
+          ]
+        ]
+      },
+      "properties": {
+        "id": "PIPE-MUNI-SUMP",
+        "name": "Municipal to Central Sump",
+        "kind": "pipe",
+        "diameter_mm": 250,
+        "from_node": "INLET-MUNI",
+        "to_node": "SUMP-CENTRAL",
+        "nominal_pressure_bar": 3.2,
+        "status": "normal"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "PIPE-BORE1-SUMP",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            77.27499999999999,
+            11.501000000000001
+          ],
+          [
+            77.276,
+            11.4975
+          ]
+        ]
+      },
+      "properties": {
+        "id": "PIPE-BORE1-SUMP",
+        "name": "Borewell 1 to Sump",
+        "kind": "pipe",
+        "diameter_mm": 150,
+        "from_node": "BORE-01",
+        "to_node": "SUMP-CENTRAL",
+        "nominal_pressure_bar": 3.2,
+        "status": "normal"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "PIPE-BORE2-SUMP",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            77.277,
+            11.494
+          ],
+          [
+            77.276,
+            11.4975
+          ]
+        ]
+      },
+      "properties": {
+        "id": "PIPE-BORE2-SUMP",
+        "name": "Borewell 2 to Sump",
+        "kind": "pipe",
+        "diameter_mm": 150,
+        "from_node": "BORE-02",
+        "to_node": "SUMP-CENTRAL",
+        "nominal_pressure_bar": 3.2,
+        "status": "normal"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "PIPE-SUMP-OHT1",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            77.276,
+            11.4975
+          ],
+          [
+            77.2738,
+            11.4993
+          ]
+        ]
+      },
+      "properties": {
+        "id": "PIPE-SUMP-OHT1",
+        "name": "Sump to OHT North",
+        "kind": "pipe",
+        "diameter_mm": 200,
+        "from_node": "SUMP-CENTRAL",
+        "to_node": "OHT-NORTH",
+        "nominal_pressure_bar": 3.2,
+        "status": "normal"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "PIPE-SUMP-OHT2",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            77.276,
+            11.4975
+          ],
+          [
+            77.27759999999999,
+            11.4963
+          ]
+        ]
+      },
+      "properties": {
+        "id": "PIPE-SUMP-OHT2",
+        "name": "Sump to OHT South",
+        "kind": "pipe",
+        "diameter_mm": 200,
+        "from_node": "SUMP-CENTRAL",
+        "to_node": "OHT-SOUTH",
+        "nominal_pressure_bar": 3.2,
+        "status": "normal"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "PIPE-SUMP-OHT3",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            77.276,
+            11.4975
+          ],
+          [
+            77.27239999999999,
+            11.499
+          ]
+        ]
+      },
+      "properties": {
+        "id": "PIPE-SUMP-OHT3",
+        "name": "Sump to OHT East",
+        "kind": "pipe",
+        "diameter_mm": 200,
+        "from_node": "SUMP-CENTRAL",
+        "to_node": "OHT-EAST",
+        "nominal_pressure_bar": 3.2,
+        "status": "normal"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "PIPE-SUMP-OHT4",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            77.276,
+            11.4975
+          ],
+          [
+            77.27499999999999,
+            11.4967
+          ]
+        ]
+      },
+      "properties": {
+        "id": "PIPE-SUMP-OHT4",
+        "name": "Sump to OHT West",
+        "kind": "pipe",
+        "diameter_mm": 150,
+        "from_node": "SUMP-CENTRAL",
+        "to_node": "OHT-WEST",
+        "nominal_pressure_bar": 3.2,
+        "status": "normal"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "PIPE-OHT1-HSTLA",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            77.2738,
+            11.4993
+          ],
+          [
+            77.274,
+            11.499
+          ]
+        ]
+      },
+      "properties": {
+        "id": "PIPE-OHT1-HSTLA",
+        "name": "OHT North to Hostel A Feeder",
+        "kind": "pipe",
+        "diameter_mm": 100,
+        "from_node": "OHT-NORTH",
+        "to_node": "BLK-HSTL-A",
+        "nominal_pressure_bar": 3.2,
+        "status": "normal"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "PIPE-OHT1-HSTLB",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            77.2738,
+            11.4993
+          ],
+          [
+            77.274,
+            11.5
+          ]
+        ]
+      },
+      "properties": {
+        "id": "PIPE-OHT1-HSTLB",
+        "name": "OHT North to Hostel B Feeder",
+        "kind": "pipe",
+        "diameter_mm": 100,
+        "from_node": "OHT-NORTH",
+        "to_node": "BLK-HSTL-B",
+        "nominal_pressure_bar": 3.2,
+        "status": "normal"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "PIPE-OHT3-HSTLC",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            77.27239999999999,
+            11.499
+          ],
+          [
+            77.2725,
+            11.499500000000001
+          ]
+        ]
+      },
+      "properties": {
+        "id": "PIPE-OHT3-HSTLC",
+        "name": "OHT East to Hostel C Feeder",
+        "kind": "pipe",
+        "diameter_mm": 100,
+        "from_node": "OHT-EAST",
+        "to_node": "BLK-HSTL-C",
+        "nominal_pressure_bar": 3.2,
+        "status": "normal"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "PIPE-OHT3-MESS",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            77.27239999999999,
+            11.499
+          ],
+          [
+            77.27279999999999,
+            11.4985
+          ]
+        ]
+      },
+      "properties": {
+        "id": "PIPE-OHT3-MESS",
+        "name": "OHT East to Central Mess",
+        "kind": "pipe",
+        "diameter_mm": 125,
+        "from_node": "OHT-EAST",
+        "to_node": "BLK-MESS",
+        "nominal_pressure_bar": 3.2,
+        "status": "normal"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "PIPE-OHT2-ACAD1",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            77.27759999999999,
+            11.4963
+          ],
+          [
+            77.277,
+            11.496
+          ]
+        ]
+      },
+      "properties": {
+        "id": "PIPE-OHT2-ACAD1",
+        "name": "OHT South to Acad 1",
+        "kind": "pipe",
+        "diameter_mm": 100,
+        "from_node": "OHT-SOUTH",
+        "to_node": "BLK-ACAD-1",
+        "nominal_pressure_bar": 3.2,
+        "status": "normal"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "PIPE-OHT2-ACAD2",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            77.27759999999999,
+            11.4963
+          ],
+          [
+            77.2785,
+            11.496
+          ]
+        ]
+      },
+      "properties": {
+        "id": "PIPE-OHT2-ACAD2",
+        "name": "OHT South to Acad 2",
+        "kind": "pipe",
+        "diameter_mm": 100,
+        "from_node": "OHT-SOUTH",
+        "to_node": "BLK-ACAD-2",
+        "nominal_pressure_bar": 3.2,
+        "status": "normal"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "PIPE-OHT4-HLTH",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            77.27499999999999,
+            11.4967
+          ],
+          [
+            77.2745,
+            11.497
+          ]
+        ]
+      },
+      "properties": {
+        "id": "PIPE-OHT4-HLTH",
+        "name": "OHT West to Health Centre",
+        "kind": "pipe",
+        "diameter_mm": 80,
+        "from_node": "OHT-WEST",
+        "to_node": "BLK-HLTH",
+        "nominal_pressure_bar": 3.2,
+        "status": "normal"
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "PIPE-OHT4-CRECHE",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            77.27499999999999,
+            11.4967
+          ],
+          [
+            77.2742,
+            11.4963
+          ]
+        ]
+      },
+      "properties": {
+        "id": "PIPE-OHT4-CRECHE",
+        "name": "OHT West to Cr\u00e8che",
+        "kind": "pipe",
+        "diameter_mm": 80,
+        "from_node": "OHT-WEST",
+        "to_node": "BLK-CRECHE",
+        "nominal_pressure_bar": 3.2,
+        "status": "normal"
+      }
+    }
+  ]
+}
