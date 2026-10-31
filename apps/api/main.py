@@ -418,24 +418,35 @@ async def ingest_source_telemetry(
                 ingested_count += 1
 
     if "public_grievances" in payload:
+        # Default user for citizen complaints ingested via API
+        user = db.query(User).filter(User.id == "USER-STUDENT-01").first()
+        user_id = user.id if user else "USER-STUDENT-01"
         for g in payload["public_grievances"]:
-            c_id = g.get("Grievance_Registration_Number", f"CPGRAMS-{uuid.uuid4().hex[:6]}")
-            exists = db.query(Complaint).filter(Complaint.id == c_id).first()
+            c_track = g.get("Grievance_Registration_Number", f"CPGRAMS/{now.year}/NEER-{uuid.uuid4().hex[:5]}")
+            exists = db.query(Complaint).filter(Complaint.tracking_id == c_track).first()
             if not exists:
+                bld = g.get("Affected_Building", "BLK-HSTL-A")
+                c_id = f"CMP-{now.year}-{uuid.uuid4().hex[:6].upper()}"
                 db.add(Complaint(
                     id=c_id,
-                    ticket_number=c_id,
+                    tracking_id=c_track,
+                    user_id=user_id,
+                    building_id=bld,
                     category=g.get("Category", "General water issue"),
-                    sub_category=g.get("Sub_Category_Description", ""),
-                    building_id=g.get("Affected_Building", "CAMPUS"),
-                    priority=g.get("Priority", "Medium"),
-                    status="under_investigation",
-                    description=g.get("Sub_Category_Description", ""),
-                    complainant_name=g.get("Complainant_Type", "Resident"),
-                    created_at=now
+                    description=g.get("Sub_Category_Description", "Public grievance registered via portal"),
+                    status="in_progress",
+                    priority=(g.get("Priority") or "medium").lower(),
+                    action_taken_remarks=g.get("Action_Taken_Remarks"),
+                    created_at=now,
+                    updated_at=now
                 ))
+                ingested_count += 1
 
-    db.commit()
+    try:
+        db.commit()
+    except Exception as db_err:
+        db.rollback()
+        print(f"Error persisting telemetry from {source_id}: {db_err}")
 
     LAPTOP_SOURCES_STATE[source_id]["latest_receipt_time"] = now_iso
     LAPTOP_SOURCES_STATE[source_id]["reading_count"] += ingested_count or len(readings) or 1
@@ -560,6 +571,23 @@ def get_latest_agent_analysis():
     if not orchestrator.latest_analysis_result:
         return {"status": "none", "message": "No agent analysis executed yet. Click 'Run Agent Analysis'."}
     return orchestrator.latest_analysis_result
+
+@app.get("/api/v1/agent/pipeline-status")
+def get_agent_pipeline_status(db: Session = Depends(get_db)):
+    if not orchestrator.latest_analysis_result:
+        try:
+            run_agent_analysis(db=db)
+        except Exception as e:
+            print("Initial pipeline analysis notice:", e)
+    latest = orchestrator.latest_analysis_result
+    traces = orchestrator.historical_traces[-16:]
+    return {
+        "status": "ready" if latest else "idle",
+        "latest_analysis": latest,
+        "traces": [t.dict() for t in traces],
+        "active_cases_count": len(orchestrator.active_cases),
+        "coordination": latest.get("coordination") if latest else None
+    }
 
 @app.get("/api/v1/agent/stream-events")
 async def stream_agent_events(request: Request):
@@ -1451,12 +1479,34 @@ def get_audit_log(format: Optional[str] = "json", db: Session = Depends(get_db))
         for r in records
     ]
 
-# 8. Agent Traces (Technical - Admin Only)
+# 8. Agent Traces (Technical Observability)
 @app.get("/api/v1/traces")
 @app.get("/api/traces")
-def get_agent_traces(user: User = Depends(require_roles("admin"))):
+def get_agent_traces():
     traces = orchestrator.historical_traces[-30:]
-    return [t.dict() for t in traces]
+    if traces:
+        return [t.dict() for t in traces]
+    try:
+        with SessionLocal() as db:
+            db_traces = db.query(DBAgentTrace).order_by(DBAgentTrace.started_at.desc()).limit(30).all()
+            if db_traces:
+                return [
+                    {
+                        "agent_name": tr.agent_name,
+                        "started_at": tr.started_at.isoformat() if tr.started_at else "",
+                        "ended_at": tr.ended_at.isoformat() if tr.ended_at else "",
+                        "execution_time_ms": tr.execution_time_ms,
+                        "status": tr.status,
+                        "inputs": json.loads(tr.inputs_json) if tr.inputs_json else {},
+                        "outputs": json.loads(tr.outputs_json) if tr.outputs_json else {},
+                        "tools_called": json.loads(tr.tools_called_json) if tr.tools_called_json else [],
+                        "notes": tr.notes
+                    }
+                    for tr in reversed(db_traces)
+                ]
+    except Exception as e:
+        print("Error fetching traces from DB:", e)
+    return []
 
 # 9. Simulation & Scenarios
 @app.get("/api/v1/simulation/status")
